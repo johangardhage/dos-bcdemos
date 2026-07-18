@@ -9,25 +9,23 @@ Retro programming in Borland C++ 3.1
 To build and run the Borland C++ demos, you must first install the following tools:
 
 - [DOSBox](https://www.dosbox.com/download.php)
-- [Borland C++](https://winworldpc.com/product/borland-c/30)
+- [Borland C++](https://archive.org/download/borland-cpp-3.1-installer/bcsetup.zip)
 
 ### Install DOSBox
 
 #### openSUSE
 
-`$ sudo zypper install dosbox mtools p7zip-full`
+`$ sudo zypper install dosbox p7zip-full`
 
 #### Ubuntu
 
-`$ sudo apt install dosbox mtools p7zip-full`
+`$ sudo apt install dosbox p7zip-full`
 
 #### Configuration
 
 When starting `dosbox` the first time, the configuration file `~/.dosbox/dosbox-0.74-2.conf` will be generated
 
 ### Install Borland C++
-
-1. Download `Borland C++ 3.1 & Application Frameworks (3.5).7z`
 
 1. Create a directory which will contain the DOS C: drive
    ```
@@ -36,19 +34,7 @@ When starting `dosbox` the first time, the configuration file `~/.dosbox/dosbox-
 
 1. Extract the downloaded Borland C++ archive
    ```
-   $ 7z x "Borland C++ 3.1 & Application Frameworks (3.5).7z"
-   ```
-
-1. Extract the Borland C++ disk images
-   ```
-   $ cd "Borland C++ 3.1 & Application Frameworks (3.5)"/
-   $ mkdir bcsetup
-   $ for i in *.img; do echo $i; mcopy -m -i $i :: bcsetup; done
-   ```
-
-1. Move the extracted files to the DOS C: drive
-   ```
-   $ mv bcsetup ~/DOSBox/
+   $ 7z x "bcsetup.zip" -o~/DOSBox/bcsetup
    ```
 
 1. Configure DOSBox
