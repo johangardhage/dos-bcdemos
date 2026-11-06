@@ -8,52 +8,59 @@ Retro programming in Borland C++ 3.1
 
 To build and run the Borland C++ demos, you must first install the following tools:
 
-- [DOSBox](https://www.dosbox.com/download.php)
+- [DOSBox Staging](https://www.dosbox-staging.org/)
 - [Borland C++](https://winworldpc.com/product/borland-c/30)
 
-### Install DOSBox
-
-#### openSUSE
-
-`$ sudo zypper install dosbox mtools p7zip-full`
+### Install DOSBox Staging
 
 #### Ubuntu
 
-`$ sudo apt install dosbox mtools p7zip-full`
+```
+$ sudo add-apt-repository ppa:feignint/dosbox-staging
+$ sudo apt update
+$ sudo apt install dosbox-staging 7zip
+```
+
+#### macOS
+
+```
+$ brew install dosbox-staging sevenzip
+```
 
 #### Configuration
 
-When starting `dosbox` the first time, the configuration file `~/.dosbox/dosbox-0.74-2.conf` will be generated
+When starting `dosbox-staging` the first time, the configuration file `dosbox-staging.conf` will be generated in
+
+- Ubuntu: `~/.config/dosbox/dosbox-staging.conf`
+- macOS: `~/Library/Preferences/DOSBox/dosbox-staging.conf`
 
 ### Install Borland C++
 
-1. Download `Borland C++ 3.1 & Application Frameworks (3.5).7z`
-
-1. Create a directory which will contain the DOS C: drive
+1. Download [Borland CPP 3.1 and Application Frameworks (1992) (3.5-1.44mb).7z](https://dl.winworldpc.com/Borland%20CPP%203.1%20and%20Application%20Frameworks%20(1992)%20(3.5-1.44mb).7z)
    ```
-   $ mkdir ~/DOSBox
+   $ curl -o "Borland CPP 3.1 and Application Frameworks (1992) (3.5-1.44mb).7z" "https://dl.winworldpc.com/Borland%20CPP%203.1%20and%20Application%20Frameworks%20(1992)%20(3.5-1.44mb).7z"
    ```
 
 1. Extract the downloaded Borland C++ archive
    ```
-   $ 7z x "Borland C++ 3.1 & Application Frameworks (3.5).7z"
+   $ 7zz x "Borland CPP 3.1 and Application Frameworks (1992) (3.5-1.44mb).7z"
    ```
 
 1. Extract the Borland C++ disk images
    ```
-   $ cd "Borland C++ 3.1 & Application Frameworks (3.5)"/
-   $ mkdir bcsetup
-   $ for i in *.img; do echo $i; mcopy -m -i $i :: bcsetup; done
+   $ cd "Borland CPP 3.1 and Application Frameworks (1992) (3.5-1.44mb)"/
+   $ for i in *.img; do echo $i; 7zz x -y -obcsetup $i; done
    ```
 
 1. Move the extracted files to the DOS C: drive
    ```
+   $ mkdir -p ~/DOSBox
    $ mv bcsetup ~/DOSBox/
    ```
 
-1. Configure DOSBox
+1. Configure DOSBox Staging
 
-   Edit `~/.dosbox/dosbox-0.74-2.conf` and add the following autoexec options
+   Edit `dosbox-staging.conf` (see [Configuration](#configuration)) and add the following autoexec options
    ```
    [autoexec]
    mount c ~/DOSBox
@@ -61,9 +68,15 @@ When starting `dosbox` the first time, the configuration file `~/.dosbox/dosbox-
    c:
    ```
 
-1. Start `dosbox` and execute the Borland C++ installation program
+   The default CPU speed (`cpu_cycles = 3000`) is too slow for the demos. In the `[cpu]` section, change it to
    ```
-   $ dosbox
+   [cpu]
+   cpu_cycles = max
+   ```
+
+1. Start `dosbox-staging` and execute the Borland C++ installation program
+   ```
+   $ dosbox-staging
    C:\> cd bcsetup
    C:\BCSETUP> install.exe
    ```
@@ -79,7 +92,7 @@ When starting `dosbox` the first time, the configuration file `~/.dosbox/dosbox-
 
 Link the `dos-bcdemos` git repository to the DOS C: drive
 ```
-$ ln -s ~/git/github/dos-bcdemos ~/DOSBox/bcdemos
+$ ln -s ~/git/dos-bcdemos ~/DOSBox/bcdemos
 ```
 
 #### Build demos from DOS terminal
