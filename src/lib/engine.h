@@ -11,7 +11,7 @@
 int		matrix[3][3];
 long		xcos, xsin, ycos, ysin, zcos, zsin;
 word		costable, sintable;
-int		asinlookup[256];
+int		asinlookup[257];	// environment map coordinate for a normal component from -256 to +256 (see enviroindex)
 word far	*bin_ptr;
 word		facetorder;
 int		bincount[80];
@@ -28,37 +28,40 @@ objecttype	*initobject (char *filename) {
 	if ( ( f = fopen (filename, "rb" ) ) == NULL ) fatalerror ( "*** error engine_initobject #2 ***" );
 
 	// load vertices
-	fread ( &vertices, 2, 1, f );
-	if ( vertices >= MAX_VERTEX ) fatalerror ( "*** error engine_initobject #3 ***" );
-	fread ( objectptr->objectvertex, sizeof(vectortype), vertices, f );
+	if ( fread ( &vertices, 2, 1, f ) != 1 ) fatalerror ( "*** error engine_initobject #3 ***" );
+	if ( vertices >= MAX_VERTEX ) fatalerror ( "*** error engine_initobject #4 ***" );
+	if ( fread ( objectptr->objectvertex, sizeof(vectortype), vertices, f ) != vertices ) fatalerror ( "*** error engine_initobject #5 ***" );
 
 	objectptr->totalvertices = vertices;
 
 	// load normals
-	fread ( &normals, 2, 1, f );
-	if ( normals >= MAX_VERTEX ) fatalerror ( "*** error engine_initobject #4 ***" );
-	fread ( objectptr->objectnormal, sizeof(vectortype), normals, f );
+	if ( fread ( &normals, 2, 1, f ) != 1 ) fatalerror ( "*** error engine_initobject #6 ***" );
+	if ( normals >= MAX_VERTEX ) fatalerror ( "*** error engine_initobject #7 ***" );
+	if ( fread ( objectptr->objectnormal, sizeof(vectortype), normals, f ) != normals ) fatalerror ( "*** error engine_initobject #8 ***" );
 
 	// check to be sure data is valid
-	if ( vertices != normals ) fatalerror ( "*** error engine_initobject #5 ***" );
+	if ( vertices != normals ) fatalerror ( "*** error engine_initobject #9 ***" );
 
 	// load facets
-	fread ( &objectptr->totalfacets, 2, 1, f );
-	if ( objectptr->totalfacets >= MAX_FACET ) fatalerror ( "*** error engine_initobject #6 ***" );
-	fread ( objectptr->objectfacet, sizeof(facettype), objectptr->totalfacets, f );
+	if ( fread ( &objectptr->totalfacets, 2, 1, f ) != 1 ) fatalerror ( "*** error engine_initobject #10 ***" );
+	if ( objectptr->totalfacets >= MAX_FACET ) fatalerror ( "*** error engine_initobject #11 ***" );
+	if ( fread ( objectptr->objectfacet, sizeof(facettype), objectptr->totalfacets, f ) != objectptr->totalfacets ) fatalerror ( "*** error engine_initobject #12 ***" );
 
 	// change facets from array indices to offsets
 	for ( facet = 0; facet < objectptr->totalfacets; facet ++ ) {
+		if ( objectptr->objectfacet[facet].a >= vertices ||
+		     objectptr->objectfacet[facet].b >= vertices ||
+		     objectptr->objectfacet[facet].c >= vertices ) fatalerror ( "*** error engine_initobject #13 ***" );
 		objectptr->objectfacet[facet].a = (word)&objectptr->screenvertex[objectptr->objectfacet[facet].a];
 		objectptr->objectfacet[facet].b = (word)&objectptr->screenvertex[objectptr->objectfacet[facet].b];
 		objectptr->objectfacet[facet].c = (word)&objectptr->screenvertex[objectptr->objectfacet[facet].c];
 	}
 
 	// load texture coords
-	if (fread ( &texturecoords, 2, 1, f ) != NULL) {
-		if ( texturecoords >= MAX_VERTEX ) fatalerror ( "*** error engine_initobject #7 ***" );
+	if (fread ( &texturecoords, 2, 1, f ) == 1) {
+		if ( texturecoords > vertices ) fatalerror ( "*** error engine_initobject #14 ***" );
 		for (loop = 0; loop < texturecoords; loop++) {
-			fread ( &objecttexture, sizeof(texturetype), 1, f );
+			if ( fread ( &objecttexture, sizeof(texturetype), 1, f ) != 1 ) fatalerror ( "*** error engine_initobject #15 ***" );
 			objectptr->screenvertex[loop].a = objecttexture.a;
 			objectptr->screenvertex[loop].b = objecttexture.b;
 		}
@@ -71,9 +74,10 @@ lighttype	*initlight (int x, int y, int z, int xinc, int yinc) {
 	lighttype	*lightptr;
 	float		xlen, ylen, zlen, length;
 
-	if (!(lightptr = new lighttype)) fatalerror("*** error engine_initlight ***");
+	if (!(lightptr = new lighttype)) fatalerror("*** error engine_initlight #1 ***");
 
-	length = sqrt ( x * x + y * y + z * z);
+	length = sqrt ( (float)x * x + (float)y * y + (float)z * z );
+	if ( length == 0 ) fatalerror ( "*** error engine_initlight #2 ***" );
 	xlen = x / length;
 	ylen = y / length;
 	zlen = z / length;
@@ -95,8 +99,8 @@ void	initsincos ( void ) {
 	int	loop, temp1;
 	long	temp2;
 
-	if ( allocmem ( MAX_ANGLE * 4 / 16, &costable ) != -1 ) fatalerror ( "*** error misc_initsincos #1 ***" );
-	if ( allocmem ( MAX_ANGLE * 4 / 16, &sintable ) != -1 ) fatalerror ( "*** error misc_initsincos #2 ***" );
+	if ( allocmem ( MAX_ANGLE * 4 / 16, &costable ) != -1 ) fatalerror ( "*** error engine_initsincos #1 ***" );
+	if ( allocmem ( MAX_ANGLE * 4 / 16, &sintable ) != -1 ) fatalerror ( "*** error engine_initsincos #2 ***" );
 
 	for ( loop = 0; loop < MAX_ANGLE; loop ++ ) {
 		temp1 = loop << 2;
@@ -112,9 +116,14 @@ void	initsincos ( void ) {
 		asm	mov	dword ptr [es:di], eax
 	}
 
-	// create arc cosine correction lookup
-	for ( loop = -128; loop < 128; loop ++ )
-		asinlookup[loop+128] = 255.0 * asin ( loop / 128.0 ) / M_PI + 127;
+	// create arc sine correction lookup: a normal component from -1 to +1
+	// maps to 0..255, centred on 127.5 (rounded to the nearest texel).
+	// the +1 pole lands on 255.5, so saturate to stay inside the map
+	for ( loop = -128; loop <= 128; loop ++ ) {
+		temp1 = 255.0 * asin ( loop / 128.0 ) / M_PI + 128.5;
+		if ( temp1 > 255 ) temp1 = 255;
+		asinlookup[loop+128] = temp1;
+	}
 }
 
 void	calcangles (objecttype *objectptr) {
@@ -123,6 +132,7 @@ void	calcangles (objecttype *objectptr) {
 	temp1 = objectptr->xrotation << 2;
 	temp2 = objectptr->yrotation << 2;
 	temp3 = objectptr->zrotation << 2;
+
 	// get the cos and sin values for the selected rotations
 	asm	mov	es, [costable]
 	asm	mov	fs, [sintable]
@@ -217,6 +227,15 @@ void	rotatenormals (objecttype *objectptr) {
 	}
 }
 
+// Returns the asinlookup index for a rotated normal component.  The
+// fixed-point rotation can push a component slightly past -256..256.
+int	enviroindex ( long c ) {
+	c = ( c + 256 ) >> 1;
+	if ( c < 0 ) return 0;
+	if ( c > 256 ) return 256;
+	return (int) c;
+}
+
 void	rotatenormalsenviro (objecttype *objectptr) {
 	int	loop;
 	long	xtemp, ytemp, ztemp, x, y, z;
@@ -229,8 +248,8 @@ void	rotatenormalsenviro (objecttype *objectptr) {
 		x = (xtemp * matrix[0][0] + ytemp * matrix[0][1] + ztemp * matrix[0][2]) >> 8;
 		y = (xtemp * matrix[1][0] + ytemp * matrix[1][1] + ztemp * matrix[1][2]) >> 8;
 
-		objectptr->screenvertex[loop].u = asinlookup[(x+256) >> 1];
-		objectptr->screenvertex[loop].v = asinlookup[(y+256) >> 1];
+		objectptr->screenvertex[loop].u = asinlookup[enviroindex ( x )];
+		objectptr->screenvertex[loop].v = asinlookup[enviroindex ( y )];
 	}
 }
 
@@ -284,7 +303,8 @@ void	rotatelight (lighttype *lightptr) {
 }
 
 void	sortfacets (objecttype *objectptr) {
-	int		facet, xnormal, depthbin;
+	int		facet, depthbin;
+	long		xnormal;
 	screentype	*v1, *v2, *v3;
 
 	for ( facet = 0; facet < objectptr->totalfacets; facet++ ) {
@@ -293,30 +313,24 @@ void	sortfacets (objecttype *objectptr) {
 		v2 = (screentype*)objectptr->objectfacet[facet].b;
 		v3 = (screentype*)objectptr->objectfacet[facet].c;
 
-		xnormal = (v2->x - v1->x)*(v1->y - v3->y) - (v2->y - v1->y)*(v1->x - v3->x);
+		// twice the facet's screen area, in long: it overflows int for large facets
+		xnormal = (long)(v2->x - v1->x)*(v1->y - v3->y) - (long)(v2->y - v1->y)*(v1->x - v3->x);
 		if ( xnormal < 0 ) continue;
 
 		// find the z midpoint of the facet
 		depthbin = ( v1->z >> 11) + (v2->z >> 11) + (v3->z >> 11) + 40;
 
+		// if the selected bin is full, try the next one
+		while (( depthbin >= 0 )&&( depthbin < 80 )&&( bincount[depthbin] >= 128 ))
+			depthbin++;
+
 		// is the facet depth inside the bin sort range?
 		if (( depthbin < 80 )&&( depthbin >= 0 )) {
 
-			bin_full:
-
-			// is the selected bin full?
-			if ( bincount[depthbin] < 128 ) {
-
-				// add facet to bin
-				bin_ptr = (word far*)MK_FP ( facetorder, ( depthbin << 8 ) + ( bincount[depthbin] << 1 ) );
-				*bin_ptr = facet;
-				bincount[depthbin]++;	// add one to the number of facets in the bin
-			}
-			else {
-				// the bin is full, try the next one.
-				depthbin++;
-				goto	bin_full;
-			}
+			// add facet to bin
+			bin_ptr = (word far*)MK_FP ( facetorder, ( depthbin << 8 ) + ( bincount[depthbin] << 1 ) );
+			*bin_ptr = facet;
+			bincount[depthbin]++;	// add one to the number of facets in the bin
 		}
 		else {
 			asm	mov	ax,	0x03

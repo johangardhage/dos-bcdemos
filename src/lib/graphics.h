@@ -67,7 +67,7 @@ void	copyscreen ( word source, word dest ) {
 }
 
 void	motionblur (word alpha, word backdrop, word vscreen, byte level) {
-	asm	mov	di, 64000
+	asm	mov	di, 63998	// last 2 pixels of the screen
 	asm	mov	es, [alpha]
 	asm	mov	fs, [backdrop]
 	asm	mov	ax, 0xa000

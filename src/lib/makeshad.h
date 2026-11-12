@@ -69,18 +69,19 @@ char		texturepalfile[]	= "mask.pal";
 char		destshadefile[]		= "mask.sht";
 FILE		*f;
 
-void	main (void) {
-	if ( ( f = fopen ( texturepalfile, "rb" ) ) == NULL ) printf ( "*** error main #1 ***" );
-	fread ( texturepal, sizeof ( colortype ), 32, f );
+int	main (void) {
+	if ( ( f = fopen ( texturepalfile, "rb" ) ) == NULL ) { printf ( "*** error main #1 ***\n" ); exit ( 1 ); }
+	if ( fread ( texturepal, sizeof ( colortype ), 32, f ) != 32 ) { printf ( "*** error main #3 ***\n" ); exit ( 1 ); }
 	fclose ( f );
 
 	createbasecolors ();
 	createshadetable ();
 
-	if ( ( f = fopen ( destshadefile, "wb" ) ) == NULL ) printf ( "*** error main #2 ***" );
-	fwrite ( optimalpal, sizeof ( colortype ), 256, f );
-	fwrite ( shadetable, sizeof ( byte ), NUM_BASECOLORS, f );
-	fclose ( f );
+	if ( ( f = fopen ( destshadefile, "wb" ) ) == NULL ) { printf ( "*** error main #2 ***\n" ); exit ( 1 ); }
+	if ( fwrite ( optimalpal, sizeof ( colortype ), 256, f ) != 256 ||
+	     fwrite ( shadetable, sizeof ( byte ), NUM_BASECOLORS, f ) != NUM_BASECOLORS ||
+	     fclose ( f ) != 0 ) { printf ( "*** error main #4 ***\n" ); exit ( 1 ); }
+	return 0;
 }
 
 real	phongillumination ( real diffusecolor, real specularcolor,

@@ -5,7 +5,6 @@
 #define	__POLYGONS_H__
 
 #include "lib/types.h"
-#include "lib/polygons.h"
 
 screentype	*leftarray[3], *rightarray[3];
 int		leftsection, rightsection;
@@ -495,7 +494,7 @@ void	texturetriangle ( screentype *v1, screentype *v2, screentype *v3, word text
 	}
 }
 
-void	flattexturetriangle ( screentype *v1, screentype *v2, screentype *v3, word texturemap, char *shadetable, word shade, word destscreen ) {
+void	flattexturetriangle ( screentype *v1, screentype *v2, screentype *v3, word texturemap, byte *shadetable, word shade, word destscreen ) {
 	long	yratio;
 	int	temp, xlongest;
 
@@ -616,7 +615,7 @@ void	flattexturetriangle ( screentype *v1, screentype *v2, screentype *v3, word 
 	}
 }
 
-void	gouraudtexturetriangle ( screentype *v1, screentype *v2, screentype *v3, word texturemap, char *shadetable, word destscreen ) {
+void	gouraudtexturetriangle ( screentype *v1, screentype *v2, screentype *v3, word texturemap, byte *shadetable, word destscreen ) {
 	long	yratio;
 	int	temp, xlongest;
 
@@ -741,7 +740,7 @@ void	gouraudtexturetriangle ( screentype *v1, screentype *v2, screentype *v3, wo
 	}
 }
 
-void	envirotexturetriangle ( screentype *v1, screentype *v2, screentype *v3, word enviromap, word texturemap, char *shadetable, word destscreen ) {
+void	envirotexturetriangle ( screentype *v1, screentype *v2, screentype *v3, word enviromap, word texturemap, byte *shadetable, word destscreen ) {
 	long	yratio;
 	int	temp, xlongest;
 
@@ -870,7 +869,7 @@ void	envirotexturetriangle ( screentype *v1, screentype *v2, screentype *v3, wor
 	}
 }
 
-void	envirotexturebumptriangle ( screentype *v1, screentype *v2, screentype *v3, word enviromap, word texturemap, word bumpmap, char *shadetable, word destscreen ) {
+void	envirotexturebumptriangle ( screentype *v1, screentype *v2, screentype *v3, word enviromap, word texturemap, word bumpmap, byte *shadetable, word destscreen ) {
 	long	xratio, yratio;
 	int	xlongest, ylongest, temp;
 	word	dudx, dudy, dvdx, dvdy, dadx, dady, dbdx, dbdy;

@@ -68,10 +68,10 @@ When starting `dosbox-staging` the first time, the configuration file `dosbox-st
    c:
    ```
 
-   The default CPU speed (`cpu_cycles = 3000`) is too slow for the demos. In the `[cpu]` section, change it to
+   In the `[cpu]` section, set the CPU speed to `25000`, roughly the speed of a 486DX2 66 MHz
    ```
    [cpu]
-   cpu_cycles = max
+   cpu_cycles = 25000
    ```
 
 1. Start `dosbox-staging` and execute the Borland C++ installation program
