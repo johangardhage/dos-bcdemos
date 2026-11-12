@@ -563,32 +563,38 @@ void	flattexturetriangle ( screentype *v1, screentype *v2, screentype *v3, word 
 
 		if ( width > 0 ) {
 			word	a, b, poffset;
-			byte	index, texel;
 
 			a = lefta;
 			b = leftb;
 			poffset = destptr + (leftx >> 6);
 
-			do {
-				asm	mov	es, word ptr [texturemap]
-				asm	mov	ah, byte ptr [a+1]
-				asm	mov	al, byte ptr [b+1]
-				asm	mov	di, ax
-				asm	mov	al, es:[di]
-				asm	mov	[texel], al
-
-				index = shadetable[texel * 128 + shade];
-
-				asm	mov	es, [destscreen]
-				asm	mov	di, [poffset]
-				asm	mov	al, [index]
-				asm	mov	es:[di], al
-
-				poffset ++;
-				a += dadx;
-				b += dbdx;
-				width --;
-				} while ( width > 0 );
+			// es:di destination, fs texture, cx and dx the texture
+			// coordinates, bx the shade's row in the shade table
+			asm	mov	es, word ptr [destscreen]
+			asm	mov	fs, word ptr [texturemap]
+			asm	mov	di, word ptr [poffset]
+			asm	mov	cx, word ptr [a]
+			asm	mov	dx, word ptr [b]
+			asm	mov	bx, word ptr [shadetable]
+			asm	add	bx, word ptr [shade]
+		flat_pixel:
+			// texel = texture[a_hi * 256 + b_hi]
+			asm	mov	ax, cx
+			asm	mov	al, dh
+			asm	mov	si, ax
+			asm	mov	al, fs:[si]
+			// pixel = shadetable[texel * 128 + shade]
+			asm	xor	ah, ah
+			asm	shl	ax, 7
+			asm	add	ax, bx
+			asm	mov	si, ax
+			asm	mov	al, [si]
+			asm	stosb
+			// a += dadx; b += dbdx;
+			asm	add	cx, word ptr [dadx]
+			asm	add	dx, word ptr [dbdx]
+			asm	dec	word ptr [width]
+			asm	jnz	flat_pixel
 			}
 		destptr += 320;
 
@@ -685,34 +691,41 @@ void	gouraudtexturetriangle ( screentype *v1, screentype *v2, screentype *v3, wo
 
 		if ( width > 0 ) {
 			word	a, b, g, poffset;
-			byte	index, texel;
 
 			a = lefta;
 			b = leftb;
 			g = leftg;
 			poffset = destptr + (leftx >> 6);
 
-			do {
-				asm	mov	es, word ptr [texturemap]
-				asm	mov	ah, byte ptr [a+1]
-				asm	mov	al, byte ptr [b+1]
-				asm	mov	di, ax
-				asm	mov	al, es:[di]
-				asm	mov	[texel], al
-
-				index = shadetable[texel * 128 + (g >> 8)];
-
-				asm	mov	es, [destscreen]
-				asm	mov	di, [poffset]
-				asm	mov	al, [index]
-				asm	mov	es:[di], al
-
-				poffset ++;
-				a += dadx;
-				b += dbdx;
-				g += dgdx;
-				width --;
-				} while ( width > 0 );
+			// es:di destination, fs texture, cx and dx the texture
+			// coordinates, bx the shade
+			asm	mov	es, word ptr [destscreen]
+			asm	mov	fs, word ptr [texturemap]
+			asm	mov	di, word ptr [poffset]
+			asm	mov	cx, word ptr [a]
+			asm	mov	dx, word ptr [b]
+			asm	mov	bx, word ptr [g]
+		gouraud_pixel:
+			// texel = texture[a_hi * 256 + b_hi]
+			asm	mov	ax, cx
+			asm	mov	al, dh
+			asm	mov	si, ax
+			asm	mov	al, fs:[si]
+			// pixel = shadetable[texel * 128 + g_hi]
+			asm	xor	ah, ah
+			asm	shl	ax, 7
+			asm	add	al, bh
+			asm	adc	ah, 0
+			asm	add	ax, word ptr [shadetable]
+			asm	mov	si, ax
+			asm	mov	al, [si]
+			asm	stosb
+			// a += dadx; b += dbdx; g += dgdx;
+			asm	add	cx, word ptr [dadx]
+			asm	add	dx, word ptr [dbdx]
+			asm	add	bx, word ptr [dgdx]
+			asm	dec	word ptr [width]
+			asm	jnz	gouraud_pixel
 			}
 		destptr += 320;
 
@@ -807,7 +820,7 @@ void	envirotexturetriangle ( screentype *v1, screentype *v2, screentype *v3, wor
 
 		if ( width > 0 ) {
 			word u, v, a, b, poffset;
-			byte	index, texel, shade;
+			byte	shade;
 
 			a = lefta;
 			b = leftb;
@@ -815,35 +828,44 @@ void	envirotexturetriangle ( screentype *v1, screentype *v2, screentype *v3, wor
 			v = leftv;
 			poffset = destptr + (leftx >> 6);
 
-			do {
-				asm	mov	es, word ptr [texturemap]
-				asm	mov	ah, byte ptr [a+1]
-				asm	mov	al, byte ptr [b+1]
-				asm	mov	di, ax
-				asm	mov	al, es:[di]
-				asm	mov	[texel], al
-
-				asm	mov	es, word ptr [enviromap]
-				asm	mov	ah, byte ptr [u+1]
-				asm	mov	al, byte ptr [v+1]
-				asm	mov	di, ax
-				asm	mov	al, es:[di]
-				asm	mov	[shade], al
-
-				index = shadetable[texel * 128 + shade];
-
-				asm	mov	es, [destscreen]
-				asm	mov	di, [poffset]
-				asm	mov	al, [index]
-				asm	mov	es:[di], al
-
-				poffset ++;
-				a += dadx;
-				b += dbdx;
-				u += dudx;
-				v += dvdx;
-				width --;
-				} while ( width > 0 );
+			// es:di destination, fs texture, gs environment map, cx and dx
+			// the texture coordinates, bx and v the environment map's
+			asm	mov	es, word ptr [destscreen]
+			asm	mov	fs, word ptr [texturemap]
+			asm	mov	gs, word ptr [enviromap]
+			asm	mov	di, word ptr [poffset]
+			asm	mov	cx, word ptr [a]
+			asm	mov	dx, word ptr [b]
+			asm	mov	bx, word ptr [u]
+		envirotexture_pixel:
+			// shade = enviromap[u_hi * 256 + v_hi]
+			asm	mov	ax, bx
+			asm	mov	al, byte ptr [v+1]
+			asm	mov	si, ax
+			asm	mov	al, gs:[si]
+			asm	mov	byte ptr [shade], al
+			// texel = texture[a_hi * 256 + b_hi]
+			asm	mov	ax, cx
+			asm	mov	al, dh
+			asm	mov	si, ax
+			asm	mov	al, fs:[si]
+			// pixel = shadetable[texel * 128 + shade]
+			asm	xor	ah, ah
+			asm	shl	ax, 7
+			asm	add	al, byte ptr [shade]
+			asm	adc	ah, 0
+			asm	add	ax, word ptr [shadetable]
+			asm	mov	si, ax
+			asm	mov	al, [si]
+			asm	stosb
+			// a += dadx; b += dbdx; u += dudx; v += dvdx;
+			asm	add	cx, word ptr [dadx]
+			asm	add	dx, word ptr [dbdx]
+			asm	add	bx, word ptr [dudx]
+			asm	mov	ax, word ptr [dvdx]
+			asm	add	word ptr [v], ax
+			asm	dec	word ptr [width]
+			asm	jnz	envirotexture_pixel
 			}
 		destptr += 320;
 
