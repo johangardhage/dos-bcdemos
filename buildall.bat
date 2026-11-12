@@ -9,3 +9,4 @@ bcc -Isrc -nbuild src\demo07.cpp
 bcc -Isrc -nbuild src\demo08.cpp
 bcc -Isrc -nbuild src\demo09.cpp
 bcc -Isrc -nbuild src\demo10.cpp
+bcc -Isrc -nbuild src\makeshad.cpp

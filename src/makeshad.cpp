@@ -1,9 +1,6 @@
 //
 // Retro programming in Borland C++ 3.1
 //
-#ifndef	__MAKESHAD_H__
-#define	__MAKESHAD_H__
-
 #include <dos.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,16 +63,41 @@ int		colorcount[64];
 int		palcount;
 //int		match[256];
 char		texturepalfile[]	= "mask.pal";
-char		destshadefile[]		= "mask.sht";
+char		*destshadefile		= "mask.sht";
+double		specularity		= K_SPECULAR;	// strength of the highlight
+double		falloff			= K_FALLOFF;	// sharpness of the highlight
 FILE		*f;
 
-int	main (void) {
+// makeshad [specularity falloff shadefile [tablespecularity tablefalloff]]
+// Without arguments, the Phong material in mask.sht.  A smaller falloff gives
+// the broader highlight that flat and gouraud shading need, since they only
+// sample the light at each face or vertex.  With a second material, the
+// palette is fitted to the first and the shade table lights the second.
+int	main ( int argc, char *argv[] ) {
+	int	index;
+
+	if ( argc == 4 || argc == 6 ) {
+		specularity = atof ( argv[1] );
+		falloff = atof ( argv[2] );
+		destshadefile = argv[3];
+	}
+	else if ( argc != 1 ) { printf ( "usage: makeshad [specularity falloff shadefile [tablespecularity tablefalloff]]\n" ); exit ( 1 ); }
+
 	if ( ( f = fopen ( texturepalfile, "rb" ) ) == NULL ) { printf ( "*** error main #1 ***\n" ); exit ( 1 ); }
 	if ( fread ( texturepal, sizeof ( colortype ), 32, f ) != 32 ) { printf ( "*** error main #3 ***\n" ); exit ( 1 ); }
 	fclose ( f );
 
 	createbasecolors ();
 	createshadetable ();
+
+	// light the shade table with the second material, in the same palette
+	if ( argc == 6 ) {
+		specularity = atof ( argv[4] );
+		falloff = atof ( argv[5] );
+		createbasecolors ();
+		for ( index = 0; index < numbasecolors; index ++ )
+			shadetable[index] = colormatch ( basecolor[index] );
+	}
 
 	if ( ( f = fopen ( destshadefile, "wb" ) ) == NULL ) { printf ( "*** error main #2 ***\n" ); exit ( 1 ); }
 	if ( fwrite ( optimalpal, sizeof ( colortype ), 256, f ) != 256 ||
@@ -92,7 +114,7 @@ real	phongillumination ( real diffusecolor, real specularcolor,
 	phongcolor =  ( K_DIFFUSE * diffusecolor * cos( theta ));
 	if ( theta < M_PI / 4 )
 	{
-		phongcolor += ( K_SPECULAR * specularcolor * pow( cos( theta * 2 ), K_FALLOFF ));
+		phongcolor += ( specularity * specularcolor * pow( cos( theta * 2 ), falloff ));
 	}
 	phongcolor *= ( K_ATTENUATION * lightcolor );
 	phongcolor += ( ambientcolor * K_AMBIENT * diffusecolor );
@@ -382,5 +404,3 @@ void	processcolorcube ( colortype min, colortype max, int level )
 		processcolorcube ( maxsplit, max, level );
 		}
 }
-
-#endif	//	__MAKESHAD_H__

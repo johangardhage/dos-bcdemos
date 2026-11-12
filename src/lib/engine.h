@@ -95,6 +95,39 @@ lighttype	*initlight (int x, int y, int z, int xinc, int yinc) {
 	return lightptr;
 }
 
+// Calculates each facet's normal from its vertices, scaled to a length of 256
+// like the vertex normals, for lighting a facet as one flat surface.
+void	initfacetnormals ( objecttype *objectptr, vectortype *facetnormal ) {
+	int		facet;
+	vectortype	*v1, *v2, *v3;
+	float		ux, uy, uz, wx, wy, wz, nx, ny, nz, length;
+
+	for ( facet = 0; facet < objectptr->totalfacets; facet ++ ) {
+		// the facets hold offsets to the screen vertices, which are numbered
+		// like the object vertices
+		v1 = &objectptr->objectvertex[(screentype*)objectptr->objectfacet[facet].a - objectptr->screenvertex];
+		v2 = &objectptr->objectvertex[(screentype*)objectptr->objectfacet[facet].b - objectptr->screenvertex];
+		v3 = &objectptr->objectvertex[(screentype*)objectptr->objectfacet[facet].c - objectptr->screenvertex];
+
+		ux = v2->x - v1->x;
+		uy = v2->y - v1->y;
+		uz = v2->z - v1->z;
+		wx = v3->x - v1->x;
+		wy = v3->y - v1->y;
+		wz = v3->z - v1->z;
+
+		nx = uy * wz - uz * wy;
+		ny = uz * wx - ux * wz;
+		nz = ux * wy - uy * wx;
+		length = sqrt ( nx * nx + ny * ny + nz * nz );
+		if ( length == 0 ) length = 1;
+
+		facetnormal[facet].x = nx * 256 / length;
+		facetnormal[facet].y = ny * 256 / length;
+		facetnormal[facet].z = nz * 256 / length;
+	}
+}
+
 void	initsincos ( void ) {
 	int	loop, temp1;
 	long	temp2;
