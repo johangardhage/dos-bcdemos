@@ -48,9 +48,10 @@ void	drawfacets ( void ) {
 
 			// rotate the facet normal
 			n = &facetnormal[facet];
-			x1 = ((long)n->x * matrix[0][0] + (long)n->y * matrix[0][1] + (long)n->z * matrix[0][2]) >> 8;
-			y1 = ((long)n->x * matrix[1][0] + (long)n->y * matrix[1][1] + (long)n->z * matrix[1][2]) >> 8;
-			z1 = ((long)n->x * matrix[2][0] + (long)n->y * matrix[2][1] + (long)n->z * matrix[2][2]) >> 8;
+			rotatevector ( n->x, n->y, n->z );
+			x1 = rx;
+			y1 = ry;
+			z1 = rz;
 
 			// calculate facet color
 			length = sqrt ( x1 * x1 + y1 * y1 + z1 * z1 ) * lightlength;
