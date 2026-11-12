@@ -5,6 +5,7 @@
 #define	__POLYGONS_H__
 
 #include "lib/types.h"
+#include <stddef.h>
 
 screentype	*leftarray[3], *rightarray[3];
 int		leftsection, rightsection;
@@ -62,6 +63,45 @@ int	getleftsection ( void ) {
 
 	return height;
 }
+
+enum { TRIANGLE_A = offsetof(screentype, a), TRIANGLE_B = offsetof(screentype, b),
+       TRIANGLE_U = offsetof(screentype, u), TRIANGLE_V = offsetof(screentype, v),
+       TRIANGLE_COLOR = offsetof(screentype, color) };
+
+// Compute triangle gradients without repeated calls and argument copies.
+// si/di/bx hold v1/v2/v3. Subtractions still wrap at 16 bits before widening,
+// and signed division truncates toward zero.
+// output = ( ( (long)( v1->field - v2->field ) << 14 ) + (long)( v3->field - v1->field ) * ratio ) / longest;
+#define TRIANGLE_GRADIENT(field, output, ratio, longest) \
+    asm mov ax, word ptr [si+field]; \
+    asm sub ax, word ptr [di+field]; \
+    asm movsx eax, ax; \
+    asm shl eax, 14; \
+    asm mov cx, word ptr [bx+field]; \
+    asm sub cx, word ptr [si+field]; \
+    asm movsx ecx, cx; \
+    asm imul ecx, dword ptr [ratio]; \
+    asm add eax, ecx; \
+    asm cdq; \
+    asm movsx ecx, word ptr [longest]; \
+    asm idiv ecx; \
+    asm mov word ptr [output], ax;
+
+// Variant when ecx already holds the sign-extended longest span.
+// output = ( ( (long)( v1->field - v2->field ) << 14 ) + (long)( v3->field - v1->field ) * ratio ) / ecx;
+#define TRIANGLE_GRADIENT_ECX(field, output, ratio) \
+    asm mov ax, word ptr [si+field]; \
+    asm sub ax, word ptr [di+field]; \
+    asm movsx eax, ax; \
+    asm shl eax, 14; \
+    asm mov dx, word ptr [bx+field]; \
+    asm sub dx, word ptr [si+field]; \
+    asm movsx edx, dx; \
+    asm imul edx, dword ptr [ratio]; \
+    asm add eax, edx; \
+    asm cdq; \
+    asm idiv ecx; \
+    asm mov word ptr [output], ax;
 
 void	triangle ( screentype *v1, screentype *v2, screentype *v3, byte color, word destscreen ) {
 	long	yratio;
@@ -215,7 +255,11 @@ void	gouraudtriangle ( screentype *v1, screentype *v2, screentype *v3, word dest
 	}
 
 	yratio <<= 8;
-	word	dgdx = (int) ((( (long) (v1->color - v2->color) << 14) + (long)(v3->color - v1->color) * yratio) / xlongest);
+	word	dgdx;
+	asm mov si, word ptr [v1]
+	asm mov di, word ptr [v2]
+	asm mov bx, word ptr [v3]
+	TRIANGLE_GRADIENT ( TRIANGLE_COLOR, dgdx, yratio, xlongest )
 	word	destptr = v1->y * 320;
 
 	while ( 1 ) {
@@ -316,8 +360,13 @@ void	envirotriangle ( screentype *v1, screentype *v2, screentype *v3, word envir
 	}
 
 	yratio <<= 8;
-	word	dudx = (int) ((( (long) (v1->u - v2->u) << 14) + (long)(v3->u - v1->u) * yratio) / xlongest);
-	word	dvdx = (int) ((( (long) (v1->v - v2->v) << 14) + (long)(v3->v - v1->v) * yratio) / xlongest);
+	word	dudx, dvdx;
+	asm mov si, word ptr [v1]
+	asm mov di, word ptr [v2]
+	asm mov bx, word ptr [v3]
+	asm movsx ecx, word ptr [xlongest]
+	TRIANGLE_GRADIENT_ECX ( TRIANGLE_U, dudx, yratio )
+	TRIANGLE_GRADIENT_ECX ( TRIANGLE_V, dvdx, yratio )
 	word	destptr = v1->y * 320;
 
 	while ( 1 ) {
@@ -433,8 +482,13 @@ void	texturetriangle ( screentype *v1, screentype *v2, screentype *v3, word text
 	}
 
 	yratio <<= 8;
-	word dadx = (int) ((( (long) (v1->a - v2->a) << 14) + (v3->a - v1->a) * yratio) / xlongest);
-	word dbdx = (int) ((( (long) (v1->b - v2->b) << 14) + (v3->b - v1->b) * yratio) / xlongest);
+	word	dadx, dbdx;
+	asm mov si, word ptr [v1]
+	asm mov di, word ptr [v2]
+	asm mov bx, word ptr [v3]
+	asm movsx ecx, word ptr [xlongest]
+	TRIANGLE_GRADIENT_ECX ( TRIANGLE_A, dadx, yratio )
+	TRIANGLE_GRADIENT_ECX ( TRIANGLE_B, dbdx, yratio )
 	word destptr = v1->y * 320;
 
 	while ( 1 ) {
@@ -554,8 +608,13 @@ void	flattexturetriangle ( screentype *v1, screentype *v2, screentype *v3, word 
 	}
 
 	yratio <<= 8;
-	word dadx = (int) ((( (long) (v1->a - v2->a) << 14) + (v3->a - v1->a) * yratio) / xlongest);
-	word dbdx = (int) ((( (long) (v1->b - v2->b) << 14) + (v3->b - v1->b) * yratio) / xlongest);
+	word	dadx, dbdx;
+	asm mov si, word ptr [v1]
+	asm mov di, word ptr [v2]
+	asm mov bx, word ptr [v3]
+	asm movsx ecx, word ptr [xlongest]
+	TRIANGLE_GRADIENT_ECX ( TRIANGLE_A, dadx, yratio )
+	TRIANGLE_GRADIENT_ECX ( TRIANGLE_B, dbdx, yratio )
 	word destptr = v1->y * 320;
 
 	while ( 1 ) {
@@ -681,9 +740,14 @@ void	gouraudtexturetriangle ( screentype *v1, screentype *v2, screentype *v3, wo
 	}
 
 	yratio <<= 8;
-	word dgdx = (int) ((( (long) (v1->color - v2->color) << 14) + (long)(v3->color - v1->color) * yratio) / xlongest);
-	word dadx = (int) ((( (long) (v1->a - v2->a) << 14) + (v3->a - v1->a) * yratio) / xlongest);
-	word dbdx = (int) ((( (long) (v1->b - v2->b) << 14) + (v3->b - v1->b) * yratio) / xlongest);
+	word	dgdx, dadx, dbdx;
+	asm mov si, word ptr [v1]
+	asm mov di, word ptr [v2]
+	asm mov bx, word ptr [v3]
+	asm movsx ecx, word ptr [xlongest]
+	TRIANGLE_GRADIENT_ECX ( TRIANGLE_COLOR, dgdx, yratio )
+	TRIANGLE_GRADIENT_ECX ( TRIANGLE_A, dadx, yratio )
+	TRIANGLE_GRADIENT_ECX ( TRIANGLE_B, dbdx, yratio )
 	word destptr = v1->y * 320;
 
 	while ( 1 ) {
@@ -809,10 +873,15 @@ void	envirotexturetriangle ( screentype *v1, screentype *v2, screentype *v3, wor
 	}
 
 	yratio <<= 8;
-	word dadx = (int) ((( (long) (v1->a - v2->a) << 14) + (v3->a - v1->a) * yratio) / xlongest);
-	word dbdx = (int) ((( (long) (v1->b - v2->b) << 14) + (v3->b - v1->b) * yratio) / xlongest);
-	word dudx = (int) ((( (long) (v1->u - v2->u) << 14) + (v3->u - v1->u) * yratio) / xlongest);
-	word dvdx = (int) ((( (long) (v1->v - v2->v) << 14) + (v3->v - v1->v) * yratio) / xlongest);
+	word	dadx, dbdx, dudx, dvdx;
+	asm mov si, word ptr [v1]
+	asm mov di, word ptr [v2]
+	asm mov bx, word ptr [v3]
+	asm movsx ecx, word ptr [xlongest]
+	TRIANGLE_GRADIENT_ECX ( TRIANGLE_A, dadx, yratio )
+	TRIANGLE_GRADIENT_ECX ( TRIANGLE_B, dbdx, yratio )
+	TRIANGLE_GRADIENT_ECX ( TRIANGLE_U, dudx, yratio )
+	TRIANGLE_GRADIENT_ECX ( TRIANGLE_V, dvdx, yratio )
 	word destptr = v1->y * 320;
 
 	while ( 1 ) {
@@ -950,10 +1019,14 @@ void	envirotexturebumptriangle ( screentype *v1, screentype *v2, screentype *v3,
 	}
 
 	yratio <<= 8;
-	dudx = (int) ((( (long) (v1->u - v2->u) << 14) + (v3->u - v1->u) * yratio) / xlongest);
-	dvdx = (int) ((( (long) (v1->v - v2->v) << 14) + (v3->v - v1->v) * yratio) / xlongest);
-	dadx = (int) ((( (long) (v1->a - v2->a) << 14) + (v3->a - v1->a) * yratio) / xlongest);
-	dbdx = (int) ((( (long) (v1->b - v2->b) << 14) + (v3->b - v1->b) * yratio) / xlongest);
+	asm mov si, word ptr [v1]
+	asm mov di, word ptr [v2]
+	asm mov bx, word ptr [v3]
+	asm movsx ecx, word ptr [xlongest]
+	TRIANGLE_GRADIENT_ECX ( TRIANGLE_U, dudx, yratio )
+	TRIANGLE_GRADIENT_ECX ( TRIANGLE_V, dvdx, yratio )
+	TRIANGLE_GRADIENT_ECX ( TRIANGLE_A, dadx, yratio )
+	TRIANGLE_GRADIENT_ECX ( TRIANGLE_B, dbdx, yratio )
 
 	lineoffset = v1->y * 320;
 
@@ -979,8 +1052,12 @@ void	envirotexturebumptriangle ( screentype *v1, screentype *v2, screentype *v3,
 
 	xratio <<= 8;
 
-	dady = (int) ((( (long) (v1->a - v2->a) << 14) + (v3->a - v1->a) * xratio) / ylongest);
-	dbdy = (int) ((( (long) (v1->b - v2->b) << 14) + (v3->b - v1->b) * xratio) / ylongest);
+	asm mov si, word ptr [v1]
+	asm mov di, word ptr [v2]
+	asm mov bx, word ptr [v3]
+	asm movsx ecx, word ptr [ylongest]
+	TRIANGLE_GRADIENT_ECX ( TRIANGLE_A, dady, xratio )
+	TRIANGLE_GRADIENT_ECX ( TRIANGLE_B, dbdy, xratio )
 
 	while ( 1 ) {
 		byte	index, texel, shade;
