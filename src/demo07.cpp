@@ -14,17 +14,23 @@ lighttype	*lightptr;
 colortype       palette[256];
 char		filename[]	= "assets/mask.3d_";
 char		texturefile[]	= "assets/mask.raw";
-char		shadefile[]	= "assets/mask.sht";
+char		shadefile[]	= "assets/maskflat.sht";
 word		vscreen, texturemap;
 byte		shadetable[NUM_BASECOLORS];
+vectortype	facetnormal[MAX_FACET];
 
 void	drawfacets ( void ) {
 	screentype	*v1, *v2, *v3;
+	vectortype	*n;
 	int		bin, bintotal, binfacet, facet;
 	// this is for calcing colors
 	float		x1, y1, z1;
-	float		costheta;
+	float		costheta, length, lightlength;
 	int		color;
+
+	// the fixed-point normals are only roughly 256 long, and the angle to the
+	// light is steep near the highlight, so divide by the actual lengths
+	lightlength = sqrt ( (float)lightptr->u * lightptr->u + (float)lightptr->v * lightptr->v + (float)lightptr->uvz * lightptr->uvz );
 
 	for ( bin = 79; bin >= 0; bin -- ) {
 
@@ -40,17 +46,21 @@ void	drawfacets ( void ) {
 			v2 = (screentype*)objectptr->objectfacet[facet].b;
 			v3 = (screentype*)objectptr->objectfacet[facet].c;
 
-			// calculate facet normal
-			x1=(v1->u + v2->u + v3->u);
-			y1=(v1->v + v2->v + v3->v);
-			z1=(v1->uvz + v2->uvz + v3->uvz);
+			// rotate the facet normal
+			n = &facetnormal[facet];
+			x1 = ((long)n->x * matrix[0][0] + (long)n->y * matrix[0][1] + (long)n->z * matrix[0][2]) >> 8;
+			y1 = ((long)n->x * matrix[1][0] + (long)n->y * matrix[1][1] + (long)n->z * matrix[1][2]) >> 8;
+			z1 = ((long)n->x * matrix[2][0] + (long)n->y * matrix[2][1] + (long)n->z * matrix[2][2]) >> 8;
 
-			// calculate facet color (196608 = 256*256*3)
-			costheta = (x1 * lightptr->u + y1 * lightptr->v + z1 * lightptr->uvz) / 196608;
-			if (costheta < 0) color = abs(costheta * 128);
-			else color = 1;
+			// calculate facet color
+			length = sqrt ( x1 * x1 + y1 * y1 + z1 * z1 ) * lightlength;
+			if ( length == 0 ) length = 1;
+			costheta = (x1 * lightptr->u + y1 * lightptr->v + z1 * lightptr->uvz) / length;
+			// the shade table is laid out by the angle to the light, not its cosine
+			if (costheta < -1) costheta = -1;
+			if (costheta < 0) color = (1 - acos(-costheta) / (M_PI / 2)) * 128;
+			else color = 0;
 			if (color > 127) color = 127;
-			if (color < 1) color = 1;
 
 			flattexturetriangle ( v1, v2, v3, texturemap, shadetable, color, vscreen );
 		}
@@ -64,7 +74,6 @@ void	drawframe ( void ) {
 	calcangles (objectptr);
 	initmatrix ();
 	rotatevertices (objectptr);
-	rotatenormals (objectptr);
 	sortfacets (objectptr);
 	rotatelight (lightptr);
 	drawfacets ();
@@ -93,6 +102,7 @@ int	main ( void ) {
 	getkey ();
 
 	objectptr = initobject (filename);
+	initfacetnormals (objectptr, facetnormal);
 	texturemap = initpicture (texturefile);
 	initshadetable (shadefile, shadetable, palette);
 	initsincos ();

@@ -14,25 +14,32 @@ lighttype	*lightptr;
 colortype       palette[256];
 char		filename[]	= "assets/mask.3d_";
 char		texturefile[]	= "assets/mask.raw";
-char		shadefile[]	= "assets/mask.sht";
+char		shadefile[]	= "assets/maskgour.sht";
 word		vscreen, texturemap;
 byte		shadetable[NUM_BASECOLORS];
 
 void	calcvertexcolors ( void ) {
 	screentype	*v;
 	int		loop;
-	float		costheta;
+	float		costheta, length, lightlength;
+
+	// the fixed-point normals are only roughly 256 long, and the angle to the
+	// light is steep near the highlight, so divide by the actual lengths
+	lightlength = sqrt ( (float)lightptr->u * lightptr->u + (float)lightptr->v * lightptr->v + (float)lightptr->uvz * lightptr->uvz );
 
 	for ( loop = 0; loop < objectptr->totalvertices; loop ++ ) {
 		// get the offsets to the vertices of this facet
 		v = (screentype*)&objectptr->screenvertex[loop];
 
 		// calculate vertex color
-		costheta = ((float)v->u * lightptr->u + (float)v->v * lightptr->v + (float)v->uvz * lightptr->uvz) / 65536;
-		if (costheta < 0) v->color = abs(costheta * 128);
-		else v->color = 1;
+		length = sqrt ( (float)v->u * v->u + (float)v->v * v->v + (float)v->uvz * v->uvz ) * lightlength;
+		if ( length == 0 ) length = 1;
+		costheta = ((float)v->u * lightptr->u + (float)v->v * lightptr->v + (float)v->uvz * lightptr->uvz) / length;
+		// the shade table is laid out by the angle to the light, not its cosine
+		if (costheta < -1) costheta = -1;
+		if (costheta < 0) v->color = (1 - acos(-costheta) / (M_PI / 2)) * 128;
+		else v->color = 0;
 		if (v->color > 127) v->color = 127;
-		if (v->color < 1) v->color = 1;
 	}
 }
 
