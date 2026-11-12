@@ -9,6 +9,8 @@
 #include "lib/misc.h"
 
 int		matrix[3][3];
+long		m00, m01, m02, m10, m11, m12, m20, m21, m22;	// the matrix as longs, for rotatevector
+long		rx, ry, rz;	// the result of rotatevector
 long		xcos, xsin, ycos, ysin, zcos, zsin;
 word		costable, sintable;
 int		asinlookup[257];	// environment map coordinate for a normal component from -256 to +256 (see enviroindex)
@@ -215,6 +217,49 @@ void	initmatrix () {
 	matrix[2][0]=((temp1 * zcos) >> 8) + ((zsin * xsin) >> 8);
 	matrix[2][1]=((zcos * xsin) >> 8) - ((temp1 * zsin) >> 8);
 	matrix[2][2]=(xcos * ycos) >> 8;
+
+	m00 = matrix[0][0];	m01 = matrix[0][1];	m02 = matrix[0][2];
+	m10 = matrix[1][0];	m11 = matrix[1][1];	m12 = matrix[1][2];
+	m20 = matrix[2][0];	m21 = matrix[2][1];	m22 = matrix[2][2];
+}
+
+// Rotates a vector by the matrix into rx, ry and rz.
+void	rotatevector ( int x, int y, int z ) {
+	// rx = ( x * m00 + y * m01 + z * m02 ) >> 8;
+	asm	movsx	eax, word ptr [x]
+	asm	imul	eax, dword ptr [m00]
+	asm	movsx	ecx, word ptr [y]
+	asm	imul	ecx, dword ptr [m01]
+	asm	add	eax, ecx
+	asm	movsx	ecx, word ptr [z]
+	asm	imul	ecx, dword ptr [m02]
+	asm	add	eax, ecx
+	asm	sar	eax, 8
+	asm	mov	dword ptr [rx], eax
+
+	// ry = ( x * m10 + y * m11 + z * m12 ) >> 8;
+	asm	movsx	eax, word ptr [x]
+	asm	imul	eax, dword ptr [m10]
+	asm	movsx	ecx, word ptr [y]
+	asm	imul	ecx, dword ptr [m11]
+	asm	add	eax, ecx
+	asm	movsx	ecx, word ptr [z]
+	asm	imul	ecx, dword ptr [m12]
+	asm	add	eax, ecx
+	asm	sar	eax, 8
+	asm	mov	dword ptr [ry], eax
+
+	// rz = ( x * m20 + y * m21 + z * m22 ) >> 8;
+	asm	movsx	eax, word ptr [x]
+	asm	imul	eax, dword ptr [m20]
+	asm	movsx	ecx, word ptr [y]
+	asm	imul	ecx, dword ptr [m21]
+	asm	add	eax, ecx
+	asm	movsx	ecx, word ptr [z]
+	asm	imul	ecx, dword ptr [m22]
+	asm	add	eax, ecx
+	asm	sar	eax, 8
+	asm	mov	dword ptr [rz], eax
 }
 
 void	rotatevertices (objecttype *objectptr) {
@@ -243,20 +288,13 @@ void	rotatevertices (objecttype *objectptr) {
 
 void	rotatenormals (objecttype *objectptr) {
 	int	loop;
-	long	xtemp, ytemp, ztemp, x, y, z;
 
 	for ( loop = 0; loop < objectptr->totalvertices; loop ++ ) {
-		xtemp = objectptr->objectnormal[loop].x;
-		ytemp = objectptr->objectnormal[loop].y;
-		ztemp = objectptr->objectnormal[loop].z;
+		rotatevector ( objectptr->objectnormal[loop].x, objectptr->objectnormal[loop].y, objectptr->objectnormal[loop].z );
 
-		x = (xtemp * matrix[0][0] + ytemp * matrix[0][1] + ztemp * matrix[0][2]) >> 8;
-		y = (xtemp * matrix[1][0] + ytemp * matrix[1][1] + ztemp * matrix[1][2]) >> 8;
-		z = (xtemp * matrix[2][0] + ytemp * matrix[2][1] + ztemp * matrix[2][2]) >> 8;
-
-		objectptr->screenvertex[loop].u = x;
-		objectptr->screenvertex[loop].v = y;
-		objectptr->screenvertex[loop].uvz = z;
+		objectptr->screenvertex[loop].u = rx;
+		objectptr->screenvertex[loop].v = ry;
+		objectptr->screenvertex[loop].uvz = rz;
 	}
 }
 
