@@ -67,52 +67,87 @@ void	copyscreen ( word source, word dest ) {
 }
 
 void	motionblur (word alpha, word backdrop, word vscreen, byte level) {
-	asm	mov	di, 63998	// last 2 pixels of the screen
+	asm	mov	di, 63996	// last 4 pixels of the screen
 	asm	mov	es, [alpha]
 	asm	mov	fs, [backdrop]
 	asm	mov	ax, 0xa000
 	asm	mov	gs, ax
+	asm	mov	dl, [level]
 	asm	push	ds
 	asm	mov	ds, [vscreen]
 	asm	xor	cx, cx
 
 	composite:
+	// where neither the object nor its trail is, 4 pixels at a time: the
+	// trail stays 0 and the screen is the backdrop
+	asm	mov	eax, [di]
+	asm	or	eax, es:[di]
+	asm	jnz	blend
+	asm	mov	eax, fs:[di]
+	asm	mov	gs:[di], eax
+	asm	sub	di, 4
+	asm	jnc	composite
+	asm	jmp	done
+
+	// otherwise blend each pair of pixels
+	blend:
+	asm	mov	ax, [di+2]	// get 2 pixels from vbuffer
+	asm	mov	bx, es:[di+2]	// get 2 pixels from alpha
+	asm	and	al, al		// is this pixel drawn?
+	asm	jz	skipper0_hi
+	asm	add	bl, al		// composite with pixel in alpha
+	asm	rcr	bl, 1		// average it
+	asm	mov	[di+2], cl	// clear vbuffer
+	skipper0_hi:
+	asm	sub	bl, dl		// reduce intensity of expired samples
+	asm	jnc	not_negative0_hi
+	asm	xor	bl, bl
+	not_negative0_hi:
+	asm	and	ah, ah
+	asm	jz	skipper1_hi
+	asm	add	bh, ah
+	asm	rcr	bh, 1
+	asm	mov	[di+2+1], cl
+	skipper1_hi:
+	asm	sub	bh, dl
+	asm	jnc	not_negative1_hi
+	asm	xor	bh, bh
+	not_negative1_hi:
+	asm	mov	es:[di+2], bx	// store back to alpha
+	asm	add	bx, fs:[di+2]	// now composite with texture
+	asm	mov	gs:[di+2], bx	// store to vscreen
+
 	asm	mov	ax, [di]	// get 2 pixels from vbuffer
 	asm	mov	bx, es:[di]	// get 2 pixels from alpha
-
-	//PIXEL #1
 	asm	and	al, al		// is this pixel drawn?
-	asm	jz	skipper0
+	asm	jz	skipper0_lo
 	asm	add	bl, al		// composite with pixel in alpha
 	asm	rcr	bl, 1		// average it
 	asm	mov	[di], cl	// clear vbuffer
-
-	// motion blur, reduce intensity of expired samples
-	skipper0:
-	asm	sub	bl, level
-	asm	jnc	not_negative0	// less than zero?
-	asm	xor	bl, bl		// overflow, clear pixel
-	not_negative0:
-
-	//PIXEL #2
+	skipper0_lo:
+	asm	sub	bl, dl		// reduce intensity of expired samples
+	asm	jnc	not_negative0_lo
+	asm	xor	bl, bl
+	not_negative0_lo:
 	asm	and	ah, ah
-	asm	jz	skipper1
+	asm	jz	skipper1_lo
 	asm	add	bh, ah
 	asm	rcr	bh, 1
 	asm	mov	[di+1], cl
-
-	skipper1:
-	asm	sub	bh, level
-	asm	jnc	not_negative1
+	skipper1_lo:
+	asm	sub	bh, dl
+	asm	jnc	not_negative1_lo
 	asm	xor	bh, bh
-	not_negative1:
-
+	not_negative1_lo:
 	asm	mov	es:[di], bx	// store back to alpha
-	asm	add	bx, fs:[di]     // now composite with texture
-	asm 	mov	gs:[di], bx     // store to vscreen
+	asm	add	bx, fs:[di]	// now composite with texture
+	asm	mov	gs:[di], bx	// store to vscreen
 
-	asm	sub	di, 2
-	asm	jnc	composite
+	// too far for a short conditional jump back
+	asm	sub	di, 4
+	asm	jc	done
+	asm	jmp	composite
+	done:
 	asm	pop	ds
 }
 
