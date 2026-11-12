@@ -15,7 +15,7 @@ char		filename[]	= "assets/chrmface.3d_";
 char		metalfile[]	= "assets/metal.raw";
 char		palettefile[]	= "assets/metal.pal";
 char		backdropfile[]	= "assets/backdrop.raw";
-word		vscreen, enviromap, backdrop, alpha;
+word		vscreen, blended, enviromap, backdrop, alpha;
 
 void	drawfacets ( void ) {
 	screentype	*v1, *v2, *v3;
@@ -48,7 +48,8 @@ void	drawframe ( void ) {
 	rotatenormalsenviro (objectptr);
 	sortfacets (objectptr);
 	drawfacets ();
-	motionblur (alpha, backdrop, vscreen, 1);
+	motionblur (alpha, backdrop, vscreen, blended, 1);
+	copyscreen ( blended, 0xa000 );
 }
 
 int	main ( void ) {
@@ -87,6 +88,7 @@ int	main ( void ) {
 	objectptr->zinc = 1;
 
 	vscreen = initvirtual (65536);
+	blended = initvirtual (65536);
 	setgfxmode(0x13);
 	introsequence ();
 
