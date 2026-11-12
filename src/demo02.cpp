@@ -38,6 +38,7 @@ void	calcvertexcolors ( void ) {
 		costheta = ((float)v->u * lightptr->u + (float)v->v * lightptr->v + (float)v->uvz * lightptr->uvz) / 65536;
 		if (costheta < 0) v->color = abs(costheta * 64);
 		else v->color = 0;
+		if (v->color > 63) v->color = 63;
 	}
 }
 
@@ -80,8 +81,8 @@ void	drawframe ( void ) {
 	copyscreen ( vscreen, 0xa000 );
 }
 
-void	main ( void ) {
-	dword	startcount, endcount, frames;
+int	main ( void ) {
+	dword	frames, activeticks, lasttick, now;
 
 	clrscr ();
 	printf ( "\n" );
@@ -98,7 +99,7 @@ void	main ( void ) {
 	printf ( "    'spacebar' to toggle rotations\n" );
 	printf ( "    'q' or 'esc' to quit\n\n" );
 	printf ( "  Press a key to start demonstration" );
-	getch ();
+	getkey ();
 
 	objectptr = initobject (filename);
 	initpalette ();
@@ -120,7 +121,8 @@ void	main ( void ) {
 	introsequence ();
 
 	frames = 0;
-	startcount = gettickcount ();
+	activeticks = 0;
+	lasttick = gettickcount ();
 
 	boolean leave = false;
 	do {
@@ -129,11 +131,18 @@ void	main ( void ) {
 			frames ++;
 		}
 
-		if ( kbhit () )
-			switch ( getch () ) {
+		// count only the time spent rendering, not the time paused
+		now = gettickcount ();
+		if ( objectptr->rotation ) activeticks += elapsedticks ( lasttick, now );
+		lasttick = now;
+
+		if ( keypressed () )
+			switch ( getkey () ) {
 				// do you want to quit?
 				case 'q':
+				case 'Q':
 				case 27 :
+				case KEY_BREAK :
 					leave = true;
 					break;
 				// toggle rotation
@@ -182,7 +191,7 @@ void	main ( void ) {
 					objectptr->yinc = 0;
 					objectptr->zinc = 0;
 					break;
-				// push the object father away
+				// push the object farther away
 				case '+' :
 					objectptr->zdepth += 10;
 					if ( objectptr->zdepth > 2000 ) objectptr->zdepth = 2000;
@@ -223,7 +232,6 @@ void	main ( void ) {
 			}
 	} while ( !leave );
 
-	endcount = gettickcount ();
 	exitsequence ();
 	setgfxmode(0x03);
 
@@ -232,5 +240,6 @@ void	main ( void ) {
 	printf ("  Runtime statistics:\n");
 //	printf ("    Vertices in object        - %i\n", totalvertices );
 //	printf ("    Faces in object           - %i\n", totalfacets );
-	printf ("    Average Frames Per Second - %f\n\n", (frames*18.2)/(endcount-startcount) );
+	printfps ( frames, activeticks );
+	return 0;
 }
