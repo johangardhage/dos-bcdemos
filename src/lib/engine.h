@@ -375,40 +375,92 @@ void	rotatelight (lighttype *lightptr) {
 
 void	sortfacets (objecttype *objectptr) {
 	int		facet, depthbin;
-	long		xnormal;
-	screentype	*v1, *v2, *v3;
+	facettype	*fptr = objectptr->objectfacet;
+	int		totalfacets = objectptr->totalfacets;
 
-	for ( facet = 0; facet < objectptr->totalfacets; facet++ ) {
-		// grab pointers to the facets 3 vertices
-		v1 = (screentype*)objectptr->objectfacet[facet].a;
-		v2 = (screentype*)objectptr->objectfacet[facet].b;
-		v3 = (screentype*)objectptr->objectfacet[facet].c;
+	// es = facetorder, for the bin stores below
+	asm	mov	es, word ptr [facetorder]
+	for ( facet = 0; facet < totalfacets; facet++, fptr++ ) {
+		// v1 = (screentype*)fptr->a;
+		// v2 = (screentype*)fptr->b;
+		// v3 = (screentype*)fptr->c;
+		asm	mov	si, word ptr [fptr]
+		asm	mov	bx, word ptr [si]
+		asm	mov	di, word ptr [si + 2]
+		asm	mov	si, word ptr [si + 4]
 
-		// twice the facet's screen area, in long: it overflows int for large facets
-		xnormal = (long)(v2->x - v1->x)*(v1->y - v3->y) - (long)(v2->y - v1->y)*(v1->x - v3->x);
-		if ( xnormal < 0 ) continue;
+		// twice the facet's screen area, in 32 bits: it overflows int for
+		// large facets
+		// if ( (long)( v2->x - v1->x ) * ( v1->y - v3->y )
+		//    - (long)( v2->y - v1->y ) * ( v1->x - v3->x ) >= 0 )
+		asm	mov	ax, word ptr [di]
+		asm	sub	ax, word ptr [bx]
+		asm	movsx	eax, ax
+		asm	mov	dx, word ptr [bx + 2]
+		asm	sub	dx, word ptr [si + 2]
+		asm	movsx	edx, dx
+		asm	imul	eax, edx
+
+		asm	mov	cx, word ptr [di + 2]
+		asm	sub	cx, word ptr [bx + 2]
+		asm	movsx	ecx, cx
+		asm	mov	dx, word ptr [bx]
+		asm	sub	dx, word ptr [si]
+		asm	movsx	edx, dx
+		asm	imul	ecx, edx
+
+		asm	sub	eax, ecx
+		asm	jl	facet_next
 
 		// find the z midpoint of the facet
-		depthbin = ( v1->z >> 11) + (v2->z >> 11) + (v3->z >> 11) + 40;
+		// depthbin = ( v1->z >> 11 ) + ( v2->z >> 11 ) + ( v3->z >> 11 ) + 40;
+		asm	mov	ax, word ptr [bx + 4]
+		asm	sar	ax, 11
+		asm	mov	dx, word ptr [di + 4]
+		asm	sar	dx, 11
+		asm	add	ax, dx
+		asm	mov	dx, word ptr [si + 4]
+		asm	sar	dx, 11
+		asm	add	ax, dx
+		asm	add	ax, 40
 
 		// if the selected bin is full, try the next one
-		while (( depthbin >= 0 )&&( depthbin < 80 )&&( bincount[depthbin] >= 128 ))
-			depthbin++;
+		// while ( (unsigned)depthbin < 80 && bincount[depthbin] >= 128 ) depthbin++;
+	bin_check:
+		asm	cmp	ax, 80
+		asm	jae	bin_error
+		asm	mov	bx, ax
+		asm	shl	bx, 1
+		asm	mov	dx, word ptr [bincount + bx]
+		asm	cmp	dx, 128
+		asm	jl	bin_store
+		asm	inc	ax
+		asm	jmp	bin_check
 
-		// is the facet depth inside the bin sort range?
-		if (( depthbin < 80 )&&( depthbin >= 0 )) {
+	bin_store:
+		// add facet to bin
+		// bin_ptr = (word far*)MK_FP ( facetorder, ( depthbin << 8 ) + ( bincount[depthbin] << 1 ) );
+		// *bin_ptr = facet;
+		// bincount[depthbin]++;
+		asm	inc	word ptr [bincount + bx]
+		asm	mov	bh, al
+		asm	mov	bl, dl
+		asm	shl	bl, 1
+		asm	mov	ax, word ptr [facet]
+		asm	mov	es:[bx], ax
+		asm	jmp	facet_next
 
-			// add facet to bin
-			bin_ptr = (word far*)MK_FP ( facetorder, ( depthbin << 8 ) + ( bincount[depthbin] << 1 ) );
-			*bin_ptr = facet;
-			bincount[depthbin]++;	// add one to the number of facets in the bin
-		}
-		else {
-			asm	mov	ax,	0x03
-			asm	int	0x10
-			printf ( "facet: %i depthbin: %i", facet, depthbin );
-			fatalerror("*** error engine_sortfacets ***");
-		}
+	bin_error:
+		// depthbin = _AX;
+		// setgfxmode ( 0x03 );
+		asm	mov	word ptr [depthbin], ax
+		asm	mov	ax,	0x03
+		asm	int	0x10
+		printf ( "facet: %i depthbin: %i", facet, depthbin );
+		fatalerror("*** error engine_sortfacets ***");
+		asm	mov	es, word ptr [facetorder]
+
+	facet_next:;
 	}
 }
 
