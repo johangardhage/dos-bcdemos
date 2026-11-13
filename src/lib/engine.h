@@ -263,27 +263,85 @@ void	rotatevector ( int x, int y, int z ) {
 }
 
 void	rotatevertices (objecttype *objectptr) {
-	int	loop, xint, yint, zint;
-	long	xtemp, ytemp, ztemp, x, y, z;
+	vectortype	*vptr = objectptr->objectvertex;
+	screentype	*sptr = objectptr->screenvertex;
+	word		count = objectptr->totalvertices;
+	int		zdepth = objectptr->zdepth;
 
-	for ( loop = 0; loop < objectptr->totalvertices; loop ++ ) {
-		xtemp = objectptr->objectvertex[loop].x;
-		ytemp = objectptr->objectvertex[loop].y;
-		ztemp = objectptr->objectvertex[loop].z;
+	if ( count == 0 ) return;
 
-		x = (xtemp * matrix[0][0] + ytemp * matrix[0][1] + ztemp * matrix[0][2]) >> 8;
-		y = (xtemp * matrix[1][0] + ytemp * matrix[1][1] + ztemp * matrix[1][2]) >> 8;
-		z = (xtemp * matrix[2][0] + ytemp * matrix[2][1] + ztemp * matrix[2][2]) >> 8;
+	// for ( loop = 0; loop < objectptr->totalvertices; loop++, vptr++, sptr++ )
+	asm	mov	si, word ptr [vptr]
+	asm	mov	di, word ptr [sptr]
+	rot_vert_loop:
+		// rx = ( vptr->x * m00 + vptr->y * m01 + vptr->z * m02 ) >> 8;
+		asm	movsx	ebx, word ptr [si]
+		asm	movsx	ecx, word ptr [si + 2]
 
-		zint = (z >> 8) + objectptr->zdepth;
-		if (zint == 0) zint = 1;
-		xint = x / zint + 160;
-		yint = y / zint + 100;
+		asm	mov	eax, ebx
+		asm	imul	eax, dword ptr [m00]
+		asm	mov	edx, ecx
+		asm	imul	edx, dword ptr [m01]
+		asm	add	eax, edx
+		asm	movsx	edx, word ptr [si + 4]
+		asm	imul	edx, dword ptr [m02]
+		asm	add	eax, edx
+		asm	sar	eax, 8
+		asm	mov	dword ptr [rx], eax
 
-		objectptr->screenvertex[loop].x = xint;
-		objectptr->screenvertex[loop].y = yint;
-		objectptr->screenvertex[loop].z = z;
-	}
+		// ry = ( vptr->x * m10 + vptr->y * m11 + vptr->z * m12 ) >> 8;
+		asm	mov	eax, ebx
+		asm	imul	eax, dword ptr [m10]
+		asm	mov	edx, ecx
+		asm	imul	edx, dword ptr [m11]
+		asm	add	eax, edx
+		asm	movsx	edx, word ptr [si + 4]
+		asm	imul	edx, dword ptr [m12]
+		asm	add	eax, edx
+		asm	sar	eax, 8
+		asm	mov	dword ptr [ry], eax
+
+		// rz = ( vptr->x * m20 + vptr->y * m21 + vptr->z * m22 ) >> 8;
+		// sptr->z = rz;
+		asm	mov	eax, ebx
+		asm	imul	eax, dword ptr [m20]
+		asm	mov	edx, ecx
+		asm	imul	edx, dword ptr [m21]
+		asm	add	eax, edx
+		asm	movsx	edx, word ptr [si + 4]
+		asm	imul	edx, dword ptr [m22]
+		asm	add	eax, edx
+		asm	sar	eax, 8
+		asm	mov	word ptr [di + 4], ax
+
+		// zint = ( rz >> 8 ) + zdepth;
+		// if ( zint == 0 ) zint = 1;
+		// sptr->x = rx / zint + 160;
+		// sptr->y = ry / zint + 100;
+		asm	sar	eax, 8
+		asm	add	ax, word ptr [zdepth]
+		asm	jnz	zint_ok
+		asm	mov	ax, 1
+	zint_ok:
+		asm	movsx	ecx, ax
+		asm	mov	eax, dword ptr [rx]
+		asm	cdq
+		asm	idiv	ecx
+		asm	add	ax, 160
+		asm	mov	word ptr [di], ax
+		asm	mov	eax, dword ptr [ry]
+		asm	cdq
+		asm	idiv	ecx
+		asm	add	ax, 100
+		asm	mov	word ptr [di + 2], ax
+
+		// vptr++; sptr++;
+		asm	add	si, 6
+		asm	add	di, 18
+		asm	dec	word ptr [count]
+		asm	jz	rot_vert_done
+		asm	jmp	rot_vert_loop
+	rot_vert_done:;
 }
 
 void	rotatenormals (objecttype *objectptr) {
