@@ -19,26 +19,34 @@ word		vscreen, enviromap, texturemap, bumpmap;
 byte		shadetable[NUM_BASECOLORS];
 
 void	drawfacets ( void ) {
-	screentype	*v1, *v2, *v3;
-	int		bin, bintotal, binfacet, facet;
+	facettype	*basefacets = objectptr->objectfacet;
+	facettype	*fptr;
+	word		bin_off;
+	int		bin, bintotal;
 
 	for ( bin = 79; bin >= 0; bin -- ) {
 
 		bintotal = bincount[bin];
-
-		for ( binfacet = 0; binfacet < bintotal; binfacet ++ ) {
-			// get the facet to be drawn
-			bin_ptr = (word far*)MK_FP ( facetorder, ( bin << 8 ) + ( binfacet << 1 ) );
-			facet = *bin_ptr;
-
-			// get the offsets to the vertices of this facet
-			v1 = (screentype*)objectptr->objectfacet[facet].a;
-			v2 = (screentype*)objectptr->objectfacet[facet].b;
-			v3 = (screentype*)objectptr->objectfacet[facet].c;
-
-			envirotexturebumptriangle ( v1, v2, v3, enviromap, texturemap, bumpmap, shadetable, vscreen );
+		if ( bintotal > 0 ) {
+			bin_off = bin << 8;
+			bincount[bin] = 0;
+			do {
+				// facet = *(word far*)MK_FP ( facetorder, bin_off );
+				// bin_off += 2;
+				// fptr = &basefacets[facet];
+				asm	mov	es, word ptr [facetorder]
+				asm	mov	bx, word ptr [bin_off]
+				asm	add	word ptr [bin_off], 2
+				asm	mov	ax, word ptr es:[bx]
+				asm	shl	ax, 1
+				asm	mov	dx, ax
+				asm	shl	ax, 1
+				asm	add	ax, dx
+				asm	add	ax, word ptr [basefacets]
+				asm	mov	word ptr [fptr], ax
+				envirotexturebumptriangle ( (screentype*)fptr->a, (screentype*)fptr->b, (screentype*)fptr->c, enviromap, texturemap, bumpmap, shadetable, vscreen );
+			} while ( --bintotal );
 		}
-		bincount[bin] = 0;
 	}
 }
 
