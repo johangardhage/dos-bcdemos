@@ -17,51 +17,140 @@ int		leftx, rightx;
 word		deltaleftx, deltarightx;
 
 int	getrightsection ( void ) {
-	int	height;
+	// screentype *v1 = rightarray[rightsection];
+	// screentype *v2 = rightarray[rightsection - 1];
+	asm	mov	bx, word ptr [rightsection]
+	asm	shl	bx, 1
+	asm	mov	si, word ptr [rightarray + bx]
+	asm	mov	di, word ptr [rightarray + bx - 2]
 
-	screentype *v1 = rightarray[rightsection];
-	screentype *v2 = rightarray[rightsection-1];
+	// int height = v2->y - v1->y;
+	// if ( height == 0 ) return 0;
+	// rightsectionheight = height;
+	asm	mov	ax, word ptr [di + 2]
+	asm	sub	ax, word ptr [si + 2]
+	asm	jz	right_done
+	asm	mov	bx, ax
+	asm	mov	word ptr [rightsectionheight], bx
 
-	height = v2->y - v1->y;
-	if ( height == 0 ) return 0;
+	// deltarightx = ( ( v2->x - v1->x ) << 6 ) / height;
+	// rightx = v1->x << 6;
+	asm	mov	ax, word ptr [di]
+	asm	sub	ax, word ptr [si]
+	asm	shl	ax, 6
+	asm	cwd
+	asm	idiv	bx
+	asm	mov	word ptr [deltarightx], ax
+	asm	mov	ax, word ptr [si]
+	asm	shl	ax, 6
+	asm	mov	word ptr [rightx], ax
 
-	deltarightx = ((v2->x - v1->x) << 6) / height;
-	rightx = v1->x << 6;
-	rightsectionheight = height;
-
-	return height;
+	asm	mov	ax, bx
+	right_done:
+	return _AX;
 }
 
 int	getleftsection ( void ) {
-	int height;
+	// screentype *v1 = leftarray[leftsection];
+	// screentype *v2 = leftarray[leftsection - 1];
+	asm	mov	bx, word ptr [leftsection]
+	asm	shl	bx, 1
+	asm	mov	si, word ptr [leftarray + bx]
+	asm	mov	di, word ptr [leftarray + bx - 2]
 
-	screentype *v1 = leftarray[leftsection];
-	screentype *v2 = leftarray[leftsection-1];
+	// int height = v2->y - v1->y;
+	// if ( height == 0 ) return 0;
+	// leftsectionheight = height;
+	asm	mov	ax, word ptr [di + 2]
+	asm	sub	ax, word ptr [si + 2]
+	asm	jnz	left_calc
+	return 0;
+	left_calc:
+	asm	mov	bx, ax
+	asm	mov	word ptr [leftsectionheight], bx
 
-	height = v2->y - v1->y;
-	if ( height == 0 ) return 0;
-
-	deltaleftx = ((v2->x - v1->x) << 6) / height;
-	leftx = v1->x << 6;
-	leftsectionheight = height;
+	// deltaleftx = ( ( v2->x - v1->x ) << 6 ) / height;
+	// leftx = v1->x << 6;
+	asm	mov	ax, word ptr [di]
+	asm	sub	ax, word ptr [si]
+	asm	shl	ax, 6
+	asm	cwd
+	asm	idiv	bx
+	asm	mov	word ptr [deltaleftx], ax
+	asm	mov	ax, word ptr [si]
+	asm	shl	ax, 6
+	asm	mov	word ptr [leftx], ax
 
 	// texture coordinates
-	deltalefta = (((v2->a - v1->a) << 6) / height) << 2;
-	lefta = (word)v1->a << 8;
-	deltaleftb = (((v2->b - v1->b) << 6) / height) << 2;
-	leftb = (word)v1->b << 8;
+	// deltalefta = ( ( ( v2->a - v1->a ) << 6 ) / height ) << 2;
+	// lefta = v1->a << 8;
+	asm	mov	ax, word ptr [di + 6]
+	asm	sub	ax, word ptr [si + 6]
+	asm	shl	ax, 6
+	asm	cwd
+	asm	idiv	bx
+	asm	shl	ax, 2
+	asm	mov	word ptr [deltalefta], ax
+	asm	mov	ax, word ptr [si + 6]
+	asm	shl	ax, 8
+	asm	mov	word ptr [lefta], ax
+
+	// deltaleftb = ( ( ( v2->b - v1->b ) << 6 ) / height ) << 2;
+	// leftb = v1->b << 8;
+	asm	mov	ax, word ptr [di + 8]
+	asm	sub	ax, word ptr [si + 8]
+	asm	shl	ax, 6
+	asm	cwd
+	asm	idiv	bx
+	asm	shl	ax, 2
+	asm	mov	word ptr [deltaleftb], ax
+	asm	mov	ax, word ptr [si + 8]
+	asm	shl	ax, 8
+	asm	mov	word ptr [leftb], ax
 
 	// phong coordinates
-	deltaleftu = (((v2->u - v1->u) << 6) / height) << 2;
-	leftu = (word)v1->u << 8;
-	deltaleftv = (((v2->v - v1->v) << 6) / height) << 2;
-	leftv = (word)v1->v << 8;
+	// deltaleftu = ( ( ( v2->u - v1->u ) << 6 ) / height ) << 2;
+	// leftu = v1->u << 8;
+	asm	mov	ax, word ptr [di + 10]
+	asm	sub	ax, word ptr [si + 10]
+	asm	shl	ax, 6
+	asm	cwd
+	asm	idiv	bx
+	asm	shl	ax, 2
+	asm	mov	word ptr [deltaleftu], ax
+	asm	mov	ax, word ptr [si + 10]
+	asm	shl	ax, 8
+	asm	mov	word ptr [leftu], ax
+
+	// deltaleftv = ( ( ( v2->v - v1->v ) << 6 ) / height ) << 2;
+	// leftv = v1->v << 8;
+	asm	mov	ax, word ptr [di + 12]
+	asm	sub	ax, word ptr [si + 12]
+	asm	shl	ax, 6
+	asm	cwd
+	asm	idiv	bx
+	asm	shl	ax, 2
+	asm	mov	word ptr [deltaleftv], ax
+	asm	mov	ax, word ptr [si + 12]
+	asm	shl	ax, 8
+	asm	mov	word ptr [leftv], ax
 
 	// gouraud coordinates
-	deltaleftg = (((v2->color - v1->color) << 6) / height) << 2;
-	leftg = (word)v1->color << 8;
+	// deltaleftg = ( ( ( v2->color - v1->color ) << 6 ) / height ) << 2;
+	// leftg = v1->color << 8;
+	asm	mov	ax, word ptr [di + 16]
+	asm	sub	ax, word ptr [si + 16]
+	asm	shl	ax, 6
+	asm	cwd
+	asm	idiv	bx
+	asm	shl	ax, 2
+	asm	mov	word ptr [deltaleftg], ax
+	asm	mov	ax, word ptr [si + 16]
+	asm	shl	ax, 8
+	asm	mov	word ptr [leftg], ax
 
-	return height;
+	asm	mov	ax, bx
+	return _AX;
 }
 
 enum { TRIANGLE_A = offsetof(screentype, a), TRIANGLE_B = offsetof(screentype, b),
