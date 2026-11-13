@@ -358,28 +358,85 @@ void	rotatenormals (objecttype *objectptr) {
 
 // Returns the asinlookup index for a rotated normal component.  The
 // fixed-point rotation can push a component slightly past -256..256.
-int	enviroindex ( long c ) {
+int	enviroindex ( int c ) {
 	c = ( c + 256 ) >> 1;
 	if ( c < 0 ) return 0;
 	if ( c > 256 ) return 256;
-	return (int) c;
+	return c;
 }
 
 void	rotatenormalsenviro (objecttype *objectptr) {
-	int	loop;
-	long	xtemp, ytemp, ztemp, x, y, z;
+	vectortype	*nptr = objectptr->objectnormal;
+	screentype	*sptr = objectptr->screenvertex;
+	word		count = objectptr->totalvertices;
 
-	for ( loop = 0; loop < objectptr->totalvertices; loop ++ ) {
-		xtemp = objectptr->objectnormal[loop].x;
-		ytemp = objectptr->objectnormal[loop].y;
-		ztemp = objectptr->objectnormal[loop].z;
+	if ( count == 0 ) return;
 
-		x = (xtemp * matrix[0][0] + ytemp * matrix[0][1] + ztemp * matrix[0][2]) >> 8;
-		y = (xtemp * matrix[1][0] + ytemp * matrix[1][1] + ztemp * matrix[1][2]) >> 8;
+	// for ( loop = 0; loop < objectptr->totalvertices; loop++, nptr++, sptr++ )
+	asm	mov	si, word ptr [nptr]
+	asm	mov	di, word ptr [sptr]
+	rot_norm_loop:
+		// rx = ( nptr->x * m00 + nptr->y * m01 + nptr->z * m02 ) >> 8;
+		asm	movsx	ebx, word ptr [si]
+		asm	movsx	ecx, word ptr [si + 2]
 
-		objectptr->screenvertex[loop].u = asinlookup[enviroindex ( x )];
-		objectptr->screenvertex[loop].v = asinlookup[enviroindex ( y )];
-	}
+		asm	mov	eax, ebx
+		asm	imul	eax, dword ptr [m00]
+		asm	mov	edx, ecx
+		asm	imul	edx, dword ptr [m01]
+		asm	add	eax, edx
+		asm	movsx	edx, word ptr [si + 4]
+		asm	imul	edx, dword ptr [m02]
+		asm	add	eax, edx
+		asm	sar	eax, 8
+		asm	xchg	ebx, eax
+
+		// ry = ( nptr->x * m10 + nptr->y * m11 + nptr->z * m12 ) >> 8;
+		asm	imul	eax, dword ptr [m10]
+		asm	mov	edx, ecx
+		asm	imul	edx, dword ptr [m11]
+		asm	add	eax, edx
+		asm	movsx	edx, word ptr [si + 4]
+		asm	imul	edx, dword ptr [m12]
+		asm	add	eax, edx
+		asm	sar	eax, 8
+
+		// sptr->u = asinlookup[enviroindex ( rx )];
+		asm	add	bx, 256
+		asm	sar	bx, 1
+		asm	jns	u_nonneg
+		asm	xor	bx, bx
+	u_nonneg:
+		asm	cmp	bx, 256
+		asm	jle	u_clamped
+		asm	mov	bx, 256
+	u_clamped:
+		asm	shl	bx, 1
+		asm	mov	dx, word ptr [asinlookup + bx]
+		asm	mov	word ptr [di + 10], dx
+
+		// sptr->v = asinlookup[enviroindex ( ry )];
+		asm	mov	bx, ax
+		asm	add	bx, 256
+		asm	sar	bx, 1
+		asm	jns	v_nonneg
+		asm	xor	bx, bx
+	v_nonneg:
+		asm	cmp	bx, 256
+		asm	jle	v_clamped
+		asm	mov	bx, 256
+	v_clamped:
+		asm	shl	bx, 1
+		asm	mov	dx, word ptr [asinlookup + bx]
+		asm	mov	word ptr [di + 12], dx
+
+		// nptr++; sptr++;
+		asm	add	si, 6
+		asm	add	di, 18
+		asm	dec	word ptr [count]
+		asm	jz	rot_norm_done
+		asm	jmp	rot_norm_loop
+	rot_norm_done:;
 }
 
 void	rotatelight (lighttype *lightptr) {
