@@ -3,10 +3,8 @@
 //
 // Texture mapping demonstration
 //
-#include "lib/types.h"
+#include "lib/system.h"
 #include "lib/engine.h"
-#include "lib/graphics.h"
-#include "lib/misc.h"
 #include "lib/polygons.h"
 
 objecttype	*objectptr;
@@ -87,7 +85,7 @@ int	main ( void ) {
 
 	vscreen = initvirtual (65536);
 	setgfxmode(0x13);
-	introsequence ();
+	introsequence ( palette, drawframe );
 
 	frames = 0;
 	activeticks = 0;
@@ -174,7 +172,7 @@ int	main ( void ) {
 			}
 	} while ( !leave );
 
-	exitsequence ();
+	exitsequence ( palette );
 	setgfxmode(0x03);
 
 	clrscr ();

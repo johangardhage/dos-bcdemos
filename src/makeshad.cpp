@@ -1,51 +1,7 @@
 //
 // Retro programming in Borland C++ 3.1
 //
-#include <dos.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <conio.h>
-#include <fcntl.h>
-#include <io.h>
-
-#define	NUM_BASECOLORS	4096
-
-#define	COLOR_RED	0
-#define	COLOR_GREEN	1
-#define	COLOR_BLUE	2
-
-#define	PAL_SIZE	255
-#define	PAL_OFFSET	1
-
-#define	K_AMBIENT	0.2
-#define	K_DIFFUSE       0.9
-#define	K_SPECULAR      0.7
-#define	K_ATTENUATION   1.0
-#define	K_FALLOFF	150
-
-#define	FACE_R		0.86
-#define	FACE_G		0.23
-#define	FACE_B		0.59
-
-#define	AMBIENT_R	0.0
-#define	AMBIENT_G	0.0
-#define	AMBIENT_B	0.0
-
-#define	LIGHT_R		0.83
-#define	LIGHT_G		0.83
-#define	LIGHT_B		0.83
-
-typedef	unsigned int	boolean;
-typedef	unsigned char	byte;
-typedef	unsigned int	word;
-typedef	unsigned long	dword;
-typedef	float		real;
-enum			boolean_values { false = 0, true = 1 };
-
-typedef struct {
-	byte	r, g, b;
-}	colortype;
+#include "lib/shadtabl.h"
 
 void	createbasecolors ( void );
 void	createshadetable ( void );
@@ -106,28 +62,6 @@ int	main ( int argc, char *argv[] ) {
 	return 0;
 }
 
-real	phongillumination ( real diffusecolor, real specularcolor,
-					real lightcolor,  real ambientcolor, real theta )
-{
-	real	phongcolor;
-
-	phongcolor =  ( K_DIFFUSE * diffusecolor * cos( theta ));
-	if ( theta < M_PI / 4 )
-	{
-		phongcolor += ( specularity * specularcolor * pow( cos( theta * 2 ), falloff ));
-	}
-	phongcolor *= ( K_ATTENUATION * lightcolor );
-	phongcolor += ( ambientcolor * K_AMBIENT * diffusecolor );
-
-	// clip phong color to between 0.0 and 1.0
-	if ( phongcolor > 1.0 )
-		phongcolor = 1.0;
-	else if ( phongcolor < 0.0 )
-		phongcolor = 0.0;
-
-	return phongcolor;
-}
-
 void	createbasecolors ( void )
 {
 	int	palcolor, shade;
@@ -147,9 +81,9 @@ void	createbasecolors ( void )
 
 			incedent = ( (real)(128 - ( shade + 1 )) / 128 ) * ( M_PI / 2 );
 
-			temp.r = 63 * phongillumination ( tclr.r/63.0, 1.0, LIGHT_R, AMBIENT_R, incedent );
-			temp.g = 63 * phongillumination ( tclr.g/63.0, 1.0, LIGHT_G, AMBIENT_G, incedent );
-			temp.b = 63 * phongillumination ( tclr.b/63.0, 1.0, LIGHT_B, AMBIENT_B, incedent );
+			temp.r = 63 * phongillumination ( tclr.r/63.0, 1.0, LIGHT_R, AMBIENT_R, incedent, specularity, falloff );
+			temp.g = 63 * phongillumination ( tclr.g/63.0, 1.0, LIGHT_G, AMBIENT_G, incedent, specularity, falloff );
+			temp.b = 63 * phongillumination ( tclr.b/63.0, 1.0, LIGHT_B, AMBIENT_B, incedent, specularity, falloff );
 
 			basecolor[numbasecolors] = temp;
 			numbasecolors++;
