@@ -4,9 +4,50 @@
 #ifndef	__ENGINE_H__
 #define	__ENGINE_H__
 
-#include "lib/types.h"
-#include "lib/graphics.h"
-#include "lib/misc.h"
+#include "lib/system.h"
+
+#define	MAX_VERTEX	980
+#define	MAX_FACET	1620
+#define	MAX_ANGLE	512
+#define	MAX_DELTA	5
+
+typedef struct {
+	int	a, b;
+}	texturetype;
+
+typedef struct {
+	int	x, y, z;
+}	vectortype;
+
+typedef struct {
+	word	a, b, c;
+}	facettype;
+
+typedef struct {
+	int	x, y, z;
+	int	a, b;
+	int	u, v, uvz;
+	int	color;
+}	screentype;
+
+typedef struct {
+	boolean		rotation;
+	int		xrotation, yrotation, zrotation;
+	int		xinc, yinc, zinc;
+	word		totalvertices, totalfacets;
+	int		zdepth;
+	vectortype	objectvertex[MAX_VERTEX];
+	vectortype      objectnormal[MAX_VERTEX];
+	screentype	screenvertex[MAX_VERTEX];
+	facettype	objectfacet[MAX_FACET];
+}	objecttype;
+
+typedef struct {
+	int 	x, y, z;
+	int	u, v, uvz;
+	int	xrot, yrot;
+	int	xinc, yinc;
+}	lighttype;
 
 int		matrix[3][3];
 long		m00, m01, m02, m10, m11, m12, m20, m21, m22;	// the matrix as longs, for rotatevector

@@ -4,7 +4,7 @@
 #ifndef	__POLYGONS_H__
 #define	__POLYGONS_H__
 
-#include "lib/types.h"
+#include "lib/engine.h"
 #include <stddef.h>
 
 screentype	*leftarray[3], *rightarray[3];
