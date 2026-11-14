@@ -33,7 +33,7 @@ void	calcvertexcolors ( void ) {
 		v = (screentype*)&objectptr->screenvertex[loop];
 
 		// calculate vertex color
-		costheta = ((float)v->u * lightptr->u + (float)v->v * lightptr->v + (float)v->uvz * lightptr->uvz) / 65536;
+		costheta = ((float)v->u * lightptr->u + (float)v->v * lightptr->v + (float)v->uvz * lightptr->uvz) / 65536L;
 		if (costheta < 0) v->color = abs(costheta * 64);
 		else v->color = 0;
 		if (v->color > 63) v->color = 63;
@@ -102,7 +102,7 @@ int	main ( void ) {
 	objectptr = initobject (filename);
 	initpalette ();
 	initsincos ();
-	facetorder = initvirtual (65536);
+	facetorder = initvirtual (65536L);
 	lightptr = initlight (0, 0, 10, 0, 0);
 
 	objectptr->rotation = true;
@@ -114,7 +114,7 @@ int	main ( void ) {
 	objectptr->yinc = 1;
 	objectptr->zinc = 1;
 
-	vscreen = initvirtual (65536);
+	vscreen = initvirtual (65536L);
 	setgfxmode(0x13);
 	introsequence ( palette, drawframe );
 

@@ -72,7 +72,7 @@ int	main ( void ) {
 	initpalette (texturepalfil, palette);
 	palette[0].r = palette[0].g = palette[0].b = 0;
 	initsincos ();
-	facetorder = initvirtual (65536);
+	facetorder = initvirtual (65536L);
 
 	objectptr->rotation = true;
 	objectptr->xrotation = 128;
@@ -83,7 +83,7 @@ int	main ( void ) {
 	objectptr->yinc = 1;
 	objectptr->zinc = 1;
 
-	vscreen = initvirtual (65536);
+	vscreen = initvirtual (65536L);
 	setgfxmode(0x13);
 	introsequence ( palette, drawframe );
 

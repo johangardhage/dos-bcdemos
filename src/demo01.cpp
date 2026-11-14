@@ -51,7 +51,7 @@ void	drawfacets ( void ) {
 			z1=(v1->uvz + v2->uvz + v3->uvz);
 
 			// calculate facet color (196608 = 256*256*3)
-			costheta = (x1 * lightptr->u + y1 * lightptr->v + z1 * lightptr->uvz) / 196608;
+			costheta = (x1 * lightptr->u + y1 * lightptr->v + z1 * lightptr->uvz) / 196608L;
 			if (costheta < 0) color = abs(costheta * 64);
 			else color = 0;
 			if (color > 63) color = 63;
@@ -99,7 +99,7 @@ int	main ( void ) {
 	objectptr = initobject (filename);
 	initpalette ();
 	initsincos ();
-	facetorder = initvirtual (65536);
+	facetorder = initvirtual (65536L);
 	lightptr = initlight (0, 0, 10, 0, 0);
 
 	objectptr->rotation = true;
@@ -111,7 +111,7 @@ int	main ( void ) {
 	objectptr->yinc = 1;
 	objectptr->zinc = 1;
 
-	vscreen = initvirtual (65536);
+	vscreen = initvirtual (65536L);
 	setgfxmode(0x13);
 	introsequence ( palette, drawframe );
 
