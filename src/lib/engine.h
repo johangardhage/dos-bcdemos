@@ -249,15 +249,15 @@ void	initmatrix () {
 
 	temp1 = (xcos * ysin) >> 8;
 	temp2 = (xsin * ysin) >> 8;
-	matrix[0][0]=(ycos * zcos) >> 8;
-	matrix[0][1]=(-ycos * zsin) >> 8;
-	matrix[0][2]=(-ysin);
-	matrix[1][0]=((xcos * zsin) >> 8) - ((temp2 * zcos) >> 8);
-	matrix[1][1]=((temp2 * zsin) >> 8) + ((xcos * zcos) >> 8);
-	matrix[1][2]=(-xsin * ycos) >> 8;
-	matrix[2][0]=((temp1 * zcos) >> 8) + ((zsin * xsin) >> 8);
-	matrix[2][1]=((zcos * xsin) >> 8) - ((temp1 * zsin) >> 8);
-	matrix[2][2]=(xcos * ycos) >> 8;
+	matrix[0][0]=(int)((ycos * zcos) >> 8);
+	matrix[0][1]=(int)((-ycos * zsin) >> 8);
+	matrix[0][2]=(int)-ysin;
+	matrix[1][0]=(int)(((xcos * zsin) >> 8) - ((temp2 * zcos) >> 8));
+	matrix[1][1]=(int)(((temp2 * zsin) >> 8) + ((xcos * zcos) >> 8));
+	matrix[1][2]=(int)((-xsin * ycos) >> 8);
+	matrix[2][0]=(int)(((temp1 * zcos) >> 8) + ((zsin * xsin) >> 8));
+	matrix[2][1]=(int)(((zcos * xsin) >> 8) - ((temp1 * zsin) >> 8));
+	matrix[2][2]=(int)((xcos * ycos) >> 8);
 
 	m00 = matrix[0][0];	m01 = matrix[0][1];	m02 = matrix[0][2];
 	m10 = matrix[1][0];	m11 = matrix[1][1];	m12 = matrix[1][2];
@@ -391,9 +391,9 @@ void	rotatenormals (objecttype *objectptr) {
 	for ( loop = 0; loop < objectptr->totalvertices; loop ++ ) {
 		rotatevector ( objectptr->objectnormal[loop].x, objectptr->objectnormal[loop].y, objectptr->objectnormal[loop].z );
 
-		objectptr->screenvertex[loop].u = rx;
-		objectptr->screenvertex[loop].v = ry;
-		objectptr->screenvertex[loop].uvz = rz;
+		objectptr->screenvertex[loop].u = (int)rx;
+		objectptr->screenvertex[loop].v = (int)ry;
+		objectptr->screenvertex[loop].uvz = (int)rz;
 	}
 }
 
@@ -481,7 +481,6 @@ void	rotatenormalsenviro (objecttype *objectptr) {
 }
 
 void	rotatelight (lighttype *lightptr) {
-	int	loop;
 	long	xtemp, ytemp, ztemp, x, y, z;
 	long	xcos, xsin, ycos, ysin;
 	word	temp1, temp2;
@@ -524,9 +523,9 @@ void	rotatelight (lighttype *lightptr) {
 	x = ( xtemp * ycos - z * ysin ) >> 8;
 	z = ( xtemp * ysin + z * ycos ) >> 8;
 
-	lightptr->u = x;
-	lightptr->v = y;
-	lightptr->uvz = z;
+	lightptr->u = (int)x;
+	lightptr->v = (int)y;
+	lightptr->uvz = (int)z;
 }
 
 void	sortfacets (objecttype *objectptr) {

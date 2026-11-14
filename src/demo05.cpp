@@ -68,9 +68,9 @@ int	main ( void ) {
 
 	objectptr = initobject (filename);
 	initsincos ();
-	facetorder = initvirtual (65536);
+	facetorder = initvirtual (65536L);
 
-	alpha = initvirtual (65536);
+	alpha = initvirtual (65536L);
 	backdrop = initpicture (backdropfile);
 	enviromap = initpicture (metalfile);
 	initpalette (palettefile, palette);
@@ -84,7 +84,7 @@ int	main ( void ) {
 	objectptr->yinc = 1;
 	objectptr->zinc = 1;
 
-	vscreen = initvirtual (65536);
+	vscreen = initvirtual (65536L);
 	setgfxmode(0x13);
 	introsequence ( palette, drawframe );
 

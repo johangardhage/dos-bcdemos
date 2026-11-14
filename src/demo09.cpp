@@ -75,7 +75,7 @@ int	main ( void ) {
 	texturemap = initpicture (texturefile);
 	initshadetable (shadefile, shadetable, palette);
 	initsincos ();
-	facetorder = initvirtual (65536);
+	facetorder = initvirtual (65536L);
 
 	objectptr->rotation = true;
 	objectptr->xrotation = 128;
@@ -86,7 +86,7 @@ int	main ( void ) {
 	objectptr->yinc = 1;
 	objectptr->zinc = 1;
 
-	vscreen = initvirtual (65536);
+	vscreen = initvirtual (65536L);
 	setgfxmode(0x13);
 	introsequence ( palette, drawframe );
 
